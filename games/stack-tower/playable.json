@@ -99,7 +99,7 @@
     "one-control": { "status": "yes", "note": "A single tap anywhere. A pulsing marker shows where. The only other control is a small reduced-motion toggle." },
     "first-reward": { "status": "yes", "note": "The first drop squashes the block, pops a score and plays a note, even when it is cut." },
     "pattern-interrupt": { "status": "yes", "note": "At the halfway block fireworks, a zoom punch and a chord break the rhythm. The golden block every fifth drop and the sky change add more breaks. The swing also speeds up every block." },
-    "variable-reward": { "status": "partial", "note": "The combo outcome varies with skill and the golden block pays triple, but the golden block follows a fixed schedule, not a random one." },
+    "variable-reward": { "status": "yes", "note": "Every fifth block is a telegraphed golden anchor, plus one per-round seeded surprise golden block per 5-block window, all paying triple points on top of skill-driven combo scaling." },
     "open-loop": { "status": "yes", "note": "A progress bar fills toward 14 blocks and the last four blocks get a teaser message. The sky moves toward space as a second progress signal." },
     "near-miss": { "status": "yes", "note": "A thin-overhang cut triggers slow motion and SO CLOSE. ALMOST THERE and ONE MORE appear near the goal. A loss at block 8 or higher still earns two stars." },
     "instant-retry": { "status": "yes", "note": "The first failure offers TRY AGAIN beside the install button." },

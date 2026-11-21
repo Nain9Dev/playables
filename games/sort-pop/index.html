@@ -110,6 +110,8 @@
   .card p.teaser { font-weight: 800; opacity: 1; color: #d64b00; margin-top: -8px; animation: tease 1.2s ease-in-out infinite; }
   @keyframes tease { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
   .card .cta { display: block; width: 100%; padding: 16px; font-size: 20px; }
+  #end-install { animation: tease 1.15s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { #end-install { animation: none; } }
   .card .retry {
     appearance: none; cursor: pointer; font: inherit; font-weight: 800; font-size: 17px; color: var(--ink);
     background: transparent; border: 3px solid var(--ink); border-radius: 999px; width: 100%; padding: 12px; margin-top: 12px;

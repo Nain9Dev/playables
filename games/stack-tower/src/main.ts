@@ -13,7 +13,6 @@ import {
   StackGame,
   cameraPullOut,
   comboTier,
-  isGoldenLevel,
   nearGoalMessage,
   skyProgress,
   speedForLevel,
@@ -53,6 +52,7 @@ const sky = new SkyView(element<HTMLCanvasElement>("sky"));
 const view = new StackView(canvas);
 const music = createMusic();
 let game = new StackGame();
+let roundSeed = 1;
 let skyShown = 0;
 let clock = 0;
 /** Time scale for slow motion after a near miss. 1 is normal speed. */
@@ -145,14 +145,15 @@ function setProgress(): void {
 }
 
 function startRound(): void {
-  game = new StackGame();
+  roundSeed = (roundSeed * 31 + (Date.now() & 0xffff)) >>> 0;
+  game = new StackGame(roundSeed);
   phase = 0;
   activeSeconds = 0;
   idleSeconds = 0;
   ended = false;
   view.reset();
   view.addBlock(game.top, 0);
-  view.setMoving(game.movingBlock(game.movingCenter(0)), 1, isGoldenLevel(1));
+  view.setMoving(game.movingBlock(game.movingCenter(0)), 1, game.isGolden(1));
   scoreText.textContent = "0";
   hint.classList.toggle("hidden", hasTapped);
   endCard.classList.remove("show");
@@ -306,7 +307,7 @@ function handleDrop(): void {
 
   phase = 0;
   // The next block already shows gold while it swings, so the player aims for it.
-  view.setMoving(game.movingBlock(game.movingCenter(0)), game.level + 1, isGoldenLevel(game.level + 1));
+  view.setMoving(game.movingBlock(game.movingCenter(0)), game.level + 1, game.isGolden(game.level + 1));
 }
 
 function frame(now: number): void {
@@ -325,7 +326,7 @@ function frame(now: number): void {
 
   if (!paused && !game.over && !ended) {
     phase += speedForLevel(game.level + 1) * dt;
-    activeSeconds += dt;
+    if (hasTapped) activeSeconds += dt;
     view.moveTo(game.movingBlock(game.movingCenter(phase)), game.level + 1);
     if (!hasTapped) {
       idleSeconds += dt;
@@ -335,7 +336,7 @@ function frame(now: number): void {
         track("idle_nudge");
       }
     }
-    if (activeSeconds >= MAX_ACTIVE_SECONDS) showEndCard("time");
+    if (hasTapped && activeSeconds >= MAX_ACTIVE_SECONDS) showEndCard("time");
   }
 
   if (!paused) view.update(dt);
