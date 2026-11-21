@@ -1,0 +1,59 @@
+{
+  "slug": "stack-tower",
+  "title": "Stack Tower",
+  "order": 1,
+  "status": "live",
+  "tagline": "Tap to stack. One perfect drop and you cannot stop.",
+  "genre": "Hyper-casual, timing",
+  "duration": "30 to 45 seconds",
+  "orientation": "Portrait",
+  "hook": "The game is already running when the ad appears. A block swings across the screen, a pulsing ring and a bouncing finger say where to tap, and the first tap pays off at once with a sound, a squash, a score pop and a color change.",
+  "coreLoop": "A block swings over the tower. Tap to drop it. The overhang is cut off and falls away, so the tower gets narrower with every mistake. A perfect drop snaps into place, keeps the block full size and builds a combo that grows the block back.",
+  "levers": [
+    {
+      "name": "First five seconds",
+      "why": "Most players who leave do it in the first three seconds, so the ad must be playable before they decide.",
+      "how": "No title screen. The game runs on load, the hint pulses, and the finger marker shakes if nobody taps for 2.5 seconds."
+    },
+    {
+      "name": "Instant feedback",
+      "why": "Every tap needs a visible, audible and tactile answer, or the mechanic feels dead.",
+      "how": "Landing squash, score pop, score bump, synthesized note and a short vibration. A perfect drop adds a ring, sparkles and a camera punch that grows with the combo."
+    },
+    {
+      "name": "Combo and regrow",
+      "why": "A streak makes skill visible and gives a reason to keep going.",
+      "how": "Each perfect drop raises the combo. The notes climb a pentatonic scale, and from the third perfect drop the block grows back toward full size."
+    },
+    {
+      "name": "Goal gradient",
+      "why": "People speed up when they can see the finish line.",
+      "how": "A progress bar fills toward 14 blocks, with ALMOST THERE at four blocks to go and ONE MORE at the last block."
+    },
+    {
+      "name": "Second chance",
+      "why": "A failure that ends the ad loses the player, and one that offers a retry keeps them.",
+      "how": "The first fail shows a TRY AGAIN button next to the install button. The second fail leaves only the install button."
+    },
+    {
+      "name": "Reward and exit",
+      "why": "The end card is where the install happens, so it must feel like a prize.",
+      "how": "Stars animate in, the score is shown, and the install button is the biggest element on the screen."
+    }
+  ],
+  "events": [
+    { "name": "impression", "meaning": "The ad is ready and visible, and the game starts." },
+    { "name": "first_tap", "meaning": "Milliseconds from start to the first tap. The key hook metric." },
+    { "name": "drop", "meaning": "A block was placed. Carries kind (perfect or cut), level and combo." },
+    { "name": "streak", "meaning": "A combo of three or more perfect drops." },
+    { "name": "idle_nudge", "meaning": "Nobody tapped for 2.5 seconds and the hint started to shake." },
+    { "name": "fail", "meaning": "The block missed the tower. Carries level and score." },
+    { "name": "retry", "meaning": "The player used the second chance." },
+    { "name": "win", "meaning": "The tower reached 14 blocks." },
+    { "name": "end_card", "meaning": "The end card is shown. Carries outcome, score, stars and level." },
+    { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }
+  ],
+  "stack": ["TypeScript", "Three.js", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
+  "source": "https://github.com/Nain9Dev/playables/tree/main/games/stack-tower",
+  "accent": "#80FF00"
+}
