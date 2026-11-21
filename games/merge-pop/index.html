@@ -28,6 +28,39 @@
   }
   #fill { width: 100%; height: 100%; background: #ffe14d; border-radius: 999px; transform-origin: left; transform: scaleX(0); transition: transform 0.3s ease-out; }
 
+  #marks { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 26px); left: 16px; right: 112px; height: 16px; pointer-events: none; }
+  #marks span { position: absolute; top: 0; transform: translateX(-50%); font-size: 12px; font-weight: 900; color: #fff; text-shadow: var(--shadow); opacity: 0.85; }
+  #marks span::before { content: ""; position: absolute; left: 50%; top: -17px; width: 2px; height: 10px; background: rgba(255, 255, 255, 0.85); transform: translateX(-50%); }
+  #marks .m128 { right: 2px; left: auto; transform: none; color: #ffe14d; }
+  #marks .m128::before { display: none; }
+  #marks.reached .m64 { color: #ffe14d; opacity: 1; animation: throb 0.6s ease-in-out infinite; }
+  #progress.flash { animation: flash 0.5s ease-out; }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(255, 225, 77, 0.9); } 100% { box-shadow: 0 0 0 14px rgba(255, 225, 77, 0); } }
+
+  #streak {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 7vh + 78px); left: 50%; margin-left: -88px; width: 176px; justify-content: center; display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px 5px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; opacity: 0;
+    transition: opacity 0.2s, transform 0.12s; pointer-events: none;
+  }
+  #streak.on { opacity: 1; }
+  #streak.bump { transform: scale(1.18); }
+  #streak small { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; opacity: 0.85; }
+  #mult { font-size: 22px; font-weight: 900; color: #ffe14d; text-shadow: var(--shadow); }
+  #pips { display: flex; gap: 3px; }
+  #pips i { width: 9px; height: 14px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); transition: background 0.15s; }
+  #pips i.lit { background: #ffe14d; box-shadow: 0 0 8px rgba(255, 225, 77, 0.8); }
+
+  #booster {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 7vh + 142px); transform: translateX(-50%); padding: 13px 22px;
+    font-size: 17px; letter-spacing: 0.04em; z-index: 4; background: #ff5d8a; color: #fff;
+    box-shadow: 0 4px 0 #b3335a, 0 8px 18px rgba(10, 14, 50, 0.35); animation: beat 1s ease-in-out infinite; white-space: nowrap;
+  }
+  @keyframes beat { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.07); } }
+  #marks .m64 { left: 85.714%; }
+  #booster small { display: block; font-size: 11px; font-weight: 800; opacity: 0.85; letter-spacing: 0.1em; }
+  #booster.armed { background: #ffe14d; color: var(--ink); box-shadow: 0 4px 0 #d6a800, 0 8px 18px rgba(10, 14, 50, 0.35); }
+  #end-install { animation: tease 1.1s ease-in-out infinite; }
+
   #stats {
     position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 7vh); left: 0; right: 0; display: flex; justify-content: center; gap: 14px;
     pointer-events: none;
@@ -112,6 +145,8 @@
 <body>
 <canvas id="stage" aria-label="Merge Pop playable ad"></canvas>
 <div id="progress" aria-hidden="true"><div id="fill"></div></div>
+<div id="marks" aria-hidden="true"><span class="m64">64</span><span class="m128">128</span></div>
+<div id="streak" aria-hidden="true"><small>STREAK</small><div id="pips"><i></i><i></i><i></i><i></i><i></i><i></i></div><b id="mult">x1</b></div>
 <div id="caption">Can you merge to <b>128</b>?</div>
 <div id="stats">
   <div class="chip" id="score-chip"><small>SCORE</small><b id="score">0</b></div>
@@ -120,6 +155,7 @@
 <div id="toast"></div>
 <div id="pops"></div>
 <div id="hint">SWIPE TO MERGE<div class="track"><span class="finger"></span></div></div>
+<button id="booster" class="cta hidden" type="button">FREE SMASH<small>REMOVE ANY TILE</small></button>
 <button id="install" class="cta" type="button">INSTALL</button>
 <div id="end" role="dialog" aria-modal="true" aria-labelledby="end-title">
   <div class="card">

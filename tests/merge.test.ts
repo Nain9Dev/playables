@@ -6,8 +6,11 @@ import {
   START_LAYOUT,
   bestTile,
   canMove,
+  demoDirection,
   emptyCells,
+  multiplierFor,
   mulberry32,
+  nearMissLine,
   nearWinMessage,
   slide,
   starsFor,
@@ -216,6 +219,129 @@ describe("difficulty", () => {
     const game = new MergeGame(1);
     expect(game.best).toBeGreaterThanOrEqual(CONFIG.goal / 2);
     expect(["left", "right", "up", "down"].some((d) => slide(game.tiles, d as "left").merges.length > 0)).toBe(true);
+  });
+});
+
+describe("streak multiplier", () => {
+  it("maps streaks to multipliers and caps them", () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 20].map(multiplierFor)).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
+  });
+
+  it("builds a streak over merging moves, scales the score and breaks on a move without a merge", () => {
+    // Row 0: 2 2 4 4 -> left gives 4 8 (combo), then 4 8 stays apart.
+    const game = new MergeGame(1, 10, [[0, 0, 2], [0, 1, 2], [3, 0, 8], [3, 1, 8], [2, 3, 16], [1, 3, 16]]);
+    const first = game.move("left");
+    expect(first.streak).toBe(1);
+    expect(first.multiplier).toBe(1);
+    expect(first.gained).toBe(4 + 16);
+    const second = game.move("up");
+    expect(second.merges.length).toBeGreaterThan(0);
+    expect(second.streak).toBe(2);
+    expect(second.multiplier).toBe(2);
+    expect(second.gained).toBe(second.merges.reduce((sum, m) => sum + m.value, 0) * 2);
+  });
+
+  it("resets the streak when a move merges nothing", () => {
+    const game = new MergeGame(1, 10, [[0, 0, 2], [0, 1, 2], [3, 3, 4]]);
+    game.move("left");
+    expect(game.streak).toBe(1);
+    const next = game.move("right");
+    expect(next.merges).toHaveLength(0);
+    expect(next.streak).toBe(0);
+    expect(next.multiplier).toBe(1);
+  });
+});
+
+describe("free demo move", () => {
+  it("picks the direction with the most merges", () => {
+    const tiles = board([[2, 2, 0, 0], [4, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 8]]);
+    const direction = demoDirection(tiles);
+    expect(direction && slide(tiles, direction).merges.length).toBe(2);
+  });
+
+  it("returns null when nothing can move", () => {
+    expect(demoDirection(board([[2, 4, 2, 4], [4, 2, 4, 2], [2, 4, 2, 4], [4, 2, 4, 2]]))).toBeNull();
+  });
+
+  it("opens with a direction that merges on the real layout", () => {
+    const game = new MergeGame(1);
+    const direction = demoDirection(game.tiles);
+    expect(direction && slide(game.tiles, direction).merges.length).toBeGreaterThan(0);
+  });
+
+  it("spends no move and is not counted as a played move", () => {
+    const game = new MergeGame(1);
+    const direction = demoDirection(game.tiles);
+    if (!direction) throw new Error("no demo move");
+    const result = game.move(direction, true);
+    expect(result.moved).toBe(true);
+    expect(game.movesLeft).toBe(CONFIG.moves);
+    expect(game.movesMade).toBe(0);
+  });
+});
+
+describe("smash booster", () => {
+  function played(moves: number): MergeGame {
+    const game = new MergeGame(1, 40, [[0, 0, 2], [0, 3, 4], [3, 0, 8]]);
+    for (let i = 0; i < moves; i += 1) game.move(i % 2 === 0 ? "right" : "left");
+    return game;
+  }
+
+  it("is not ready before the offer move", () => {
+    const game = played(CONFIG.boosterAtMove - 1);
+    expect(game.movesMade).toBe(CONFIG.boosterAtMove - 1);
+    expect(game.boosterReady).toBe(false);
+    expect(game.smash(0, 0)).toBeNull();
+  });
+
+  it("becomes ready at the offer move and removes the chosen tile without spending a move", () => {
+    const game = played(CONFIG.boosterAtMove);
+    expect(game.boosterReady).toBe(true);
+    const target = game.tiles[0];
+    if (!target) throw new Error("empty board");
+    const movesLeft = game.movesLeft;
+    const count = game.tiles.length;
+    expect(game.smash(target.row, target.col)?.id).toBe(target.id);
+    expect(game.tiles).toHaveLength(count - 1);
+    expect(game.movesLeft).toBe(movesLeft);
+  });
+
+  it("can be used once and ignores empty cells", () => {
+    const game = played(CONFIG.boosterAtMove);
+    const free = emptyCells(game.tiles)[0];
+    if (!free) throw new Error("no empty cell");
+    expect(game.smash(free.row, free.col)).toBeNull();
+    expect(game.boosterReady).toBe(true);
+    const target = game.tiles[0];
+    if (!target) throw new Error("empty board");
+    game.smash(target.row, target.col);
+    expect(game.boosterReady).toBe(false);
+    const other = game.tiles[0];
+    if (!other) throw new Error("empty board");
+    expect(game.smash(other.row, other.col)).toBeNull();
+  });
+});
+
+describe("milestone", () => {
+  it("fires once when the second 64 appears", () => {
+    const game = new MergeGame(1, 10, [[0, 0, 32], [0, 1, 32], [3, 0, 64]]);
+    const first = game.move("left");
+    expect(first.milestone).toBe(true);
+    const second = game.move("right");
+    expect(second.milestone).toBe(false);
+  });
+
+  it("does not fire with a single 64", () => {
+    const game = new MergeGame(1, 10, [[0, 0, 2], [0, 1, 2], [3, 0, 64]]);
+    expect(game.move("left").milestone).toBe(false);
+  });
+});
+
+describe("near-miss line", () => {
+  it("reflects how close the board was", () => {
+    expect(nearMissLine(board([[64, 64]]))).toMatch(/one merge from 128/);
+    expect(nearMissLine(board([[64, 8]]))).toMatch(/64/);
+    expect(nearMissLine(board([[16, 8]]))).toMatch(/Best tile 16/);
   });
 });
 
