@@ -107,15 +107,25 @@
     }
   });
 
-  // Live phones (the home hero): the games run by themselves while the hero is on screen and
-  // restart every few seconds behind a poster veil, so an end card never shows. The first input
-  // inside a phone claims it: the others stop and the visitor plays alone.
+  // Live phones (the home hero): the center featured phone runs by itself while the hero is on
+  // screen, and side phones run on hover or focus, so the hero stays smooth on modest GPUs.
+  // Live phones restart every few seconds behind a poster veil, so an end card never shows.
+  // The first input inside any phone claims it: the others stop and the visitor plays alone.
   var livePhones = Array.prototype.slice.call(document.querySelectorAll(".phone[data-live]"));
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var heroVisible = false;
+
+  function isSidePhone(phone) {
+    return phone.classList.contains("phone-side");
+  }
+
+  function hasClaimedLive() {
+    return livePhones.some(function (phone) { return Boolean(phone._claimed); });
+  }
 
   function startLive(phone, index) {
-    // Hidden side phones (phone widths) and claimed phones are skipped.
-    if (phone._claimed || phone.offsetParent === null || phone.querySelector("iframe")) return;
+    // Hidden side phones (phone widths), claimed phones, or when another phone is claimed are skipped.
+    if (phone._claimed || hasClaimedLive() || phone.offsetParent === null || phone.querySelector("iframe")) return;
     mount(phone, true);
     var screen = phone.querySelector(".phone-screen");
     var loop = (Number(phone.getAttribute("data-loop")) || 11000) + index * 1300;
@@ -132,11 +142,36 @@
     if (!phone._claimed) release(phone);
   }
 
+  function syncHeroLive() {
+    var active = heroVisible && !document.hidden;
+    livePhones.forEach(function (phone, index) {
+      if (!active) {
+        stopLive(phone);
+      } else if (!isSidePhone(phone)) {
+        startLive(phone, index);
+      }
+    });
+  }
+
   if (livePhones.length && !reduceMotion && "IntersectionObserver" in window) {
     new IntersectionObserver(function (entries) {
-      var visible = entries.some(function (entry) { return entry.isIntersecting; });
-      livePhones.forEach(function (phone, index) { return visible ? startLive(phone, index) : stopLive(phone); });
+      heroVisible = entries.some(function (entry) { return entry.isIntersecting; });
+      syncHeroLive();
     }, { threshold: 0.25 }).observe(livePhones[0].parentElement);
+
+    document.addEventListener("visibilitychange", syncHeroLive);
+
+    livePhones.forEach(function (phone, index) {
+      if (!isSidePhone(phone)) return;
+      var wake = function () { if (heroVisible && !document.hidden) startLive(phone, index); };
+      var sleep = function () { stopLive(phone); };
+      phone.addEventListener("mouseenter", wake);
+      phone.addEventListener("focusin", wake);
+      phone.addEventListener("mouseleave", sleep);
+      phone.addEventListener("focusout", function (event) {
+        if (!phone.contains(event.relatedTarget)) sleep();
+      });
+    });
   }
 
   window.addEventListener("message", function (event) {
