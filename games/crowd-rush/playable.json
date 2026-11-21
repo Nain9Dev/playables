@@ -1,0 +1,60 @@
+{
+  "slug": "crowd-rush",
+  "title": "Crowd Rush",
+  "order": 2,
+  "status": "live",
+  "tagline": "Steer through the gates. Grow the crowd. Crush the boss.",
+  "genre": "Hyper-casual, gate runner",
+  "duration": "30 to 45 seconds",
+  "orientation": "Portrait",
+  "hook": "The crowd is already running when the ad appears. A finger slides left and right to show the only control, and the first gate arrives in about a second, with two good choices so the first decision always rewards the player.",
+  "coreLoop": "Steer left or right to pick one gate in each row. Plus and times gates grow the crowd, minus and divide gates shrink it. After six rows the crowd meets a boss crowd, and the bigger one wins. The levels come from a seed, and there is always a path that wins.",
+  "levers": [
+    {
+      "name": "One control",
+      "why": "A mechanic that needs no explanation removes the main reason to leave in the first seconds.",
+      "how": "Drag to steer on a phone, move the mouse on a desktop. A sliding finger shows it, and it shakes faster after 2.5 idle seconds."
+    },
+    {
+      "name": "Instant reward",
+      "why": "The first choice decides whether the ad feels generous.",
+      "how": "Both gates in the first row are good, so the player is rewarded whichever side they take. Later rows have one good and one bad gate."
+    },
+    {
+      "name": "Visible growth",
+      "why": "Seeing the number and the crowd grow is the whole pleasure of the genre.",
+      "how": "The crowd is an instanced mesh of up to 160 blobs, and the counter floats above it. Big gains add a field-of-view kick and a rising arpeggio."
+    },
+    {
+      "name": "Readable risk",
+      "why": "The player must see which gate is bad before choosing, or a loss feels unfair.",
+      "how": "Blue gates add or multiply, red gates subtract or divide. The label is drawn on each gate, and the road shows both sides at once."
+    },
+    {
+      "name": "Boss tension",
+      "why": "A final fight gives the run an ending and turns the crowd size into a result.",
+      "how": "A BOSS AHEAD warning, then the two crowds shrink against each other with sparks, shake and short vibrations. The enemy is 65 percent of the best possible crowd, so a few mistakes still win."
+    },
+    {
+      "name": "Second chance with a gift",
+      "why": "A loss that offers something to come back for keeps the player.",
+      "how": "The first failure offers TRY AGAIN with 12 extra crowd members. The second failure leaves only the install button."
+    }
+  ],
+  "events": [
+    { "name": "impression", "meaning": "The ad is ready and visible, and the run starts." },
+    { "name": "first_input", "meaning": "Milliseconds from start to the first steering input. The key hook metric." },
+    { "name": "gate", "meaning": "A gate was passed. Carries row, operation, value, and the crowd before and after." },
+    { "name": "bad_gate", "meaning": "The player took a subtract or divide gate." },
+    { "name": "idle_nudge", "meaning": "Nobody steered for 2.5 seconds and the finger sped up." },
+    { "name": "boss_start", "meaning": "The final fight began. Carries the crowd and the enemy size." },
+    { "name": "fail", "meaning": "The run was lost. Carries the reason, the crowd or the boss." },
+    { "name": "retry", "meaning": "The player used the second chance and took the bonus crowd." },
+    { "name": "win", "meaning": "The boss was beaten. Carries the number of survivors." },
+    { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, crowd and enemy." },
+    { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }
+  ],
+  "stack": ["TypeScript", "Three.js", "InstancedMesh", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
+  "source": "https://github.com/Nain9Dev/playables/tree/main/games/crowd-rush",
+  "accent": "#2f7bff"
+}

@@ -24,6 +24,7 @@ A portfolio of **single-file HTML5 playable ads** built with Three.js. Each one 
 | Playable | Mechanic | Size | Spec |
 | :--- | :--- | :--- | :--- |
 | [Stack Tower](games/stack-tower) | Timing. Tap to drop a swinging block, the overhang is cut off | about 537 KB | 7 of 7 rules |
+| [Crowd Rush](games/crowd-rush) | Gate runner. Steer through math gates to grow a crowd, then beat a boss crowd | about 542 KB | 7 of 7 rules |
 
 Each playable has its own breakdown page with the hook, the core loop, a table of retention levers, a live telemetry panel and the real spec verdict.
 

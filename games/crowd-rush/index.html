@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Crowd Rush, a Three.js playable ad</title>
+<style>
+  :root { --hud: #ffffff; --ink: #1b2a63; --shadow: 0 2px 10px rgba(20, 30, 70, 0.4); }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #8ec9ff; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #progress {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 112px; height: 10px;
+    background: rgba(255, 255, 255, 0.4); border-radius: 999px; overflow: hidden; pointer-events: none;
+  }
+  #fill { width: 100%; height: 100%; background: #ffe14d; border-radius: 999px; transform-origin: left; transform: scaleX(0); }
+  #count {
+    position: fixed; left: 0; top: 0; color: #fff; font-size: 44px; font-weight: 900; text-shadow: var(--shadow);
+    pointer-events: none; will-change: transform; padding: 2px 12px; border-radius: 14px; background: rgba(30, 90, 220, 0.78);
+  }
+  #count.bump { filter: brightness(1.3); }
+  #toast {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 48px); left: 0; right: 0;
+    text-align: center; color: var(--hud); font-size: 28px; font-weight: 900; letter-spacing: 0.08em;
+    text-shadow: var(--shadow); opacity: 0; pointer-events: none;
+  }
+  #toast.show { animation: pop 1s ease-out; }
+  #toast.gold { color: #ffe14d; }
+  #toast.red { color: #ff5a6a; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(0.6); } 20% { opacity: 1; transform: scale(1.15); } 100% { opacity: 0; transform: scale(1) translateY(-14px); } }
+  #pops { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .gate-pop {
+    position: absolute; left: 0; top: 0; color: #fff; font-weight: 900; font-size: 46px; text-shadow: var(--shadow);
+    animation: float-up 0.95s ease-out forwards;
+  }
+  .gate-pop.good { color: #7dffa0; }
+  .gate-pop.bad { color: #ff6b7b; }
+  @keyframes float-up { from { opacity: 1; margin-top: 0; transform: translate(-50%, -100%) scale(0.7); } 25% { transform: translate(-50%, -100%) scale(1.25); } to { opacity: 0; margin-top: -90px; transform: translate(-50%, -100%) scale(1); } }
+
+  #hint {
+    position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 11vh);
+    text-align: center; color: var(--hud); font-size: 26px; font-weight: 900; letter-spacing: 0.1em;
+    text-shadow: var(--shadow); pointer-events: none;
+  }
+  #hint.hidden { display: none; }
+  #hint .track { position: relative; width: 190px; height: 58px; margin: 12px auto 0; }
+  #hint .finger {
+    position: absolute; top: 0; left: 0; width: 54px; height: 54px; border-radius: 50%;
+    border: 4px solid #fff; box-shadow: var(--shadow); animation: slide 1.4s ease-in-out infinite;
+  }
+  #hint.nudge .finger { animation-duration: 0.7s; }
+  @keyframes slide { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(136px); } }
+
+  .cta {
+    appearance: none; border: 0; cursor: pointer; font: inherit; font-weight: 800; color: var(--ink);
+    background: #ffe14d; border-radius: 999px; box-shadow: 0 4px 0 #d6a800, 0 8px 18px rgba(20, 30, 70, 0.3);
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #d6a800; }
+  #install { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 2px); right: 14px; padding: 9px 18px; font-size: 15px; z-index: 5; }
+
+  #end {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(18, 26, 66, 0.55); backdrop-filter: blur(3px); z-index: 6;
+  }
+  #end.show { display: flex; }
+  .card {
+    width: min(86vw, 360px); text-align: center; padding: 26px 22px 22px; border-radius: 26px;
+    background: #ffffff; color: var(--ink); box-shadow: 0 18px 50px rgba(10, 16, 50, 0.45);
+    animation: rise 0.45s cubic-bezier(0.2, 1.3, 0.4, 1);
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(30px) scale(0.92); } to { opacity: 1; transform: none; } }
+  .card h1 { font-size: 30px; line-height: 1.1; margin-bottom: 8px; }
+  #stars { font-size: 38px; letter-spacing: 6px; margin-bottom: 4px; color: #ffb800; min-height: 46px; }
+  #stars .off { color: #d8def0; }
+  #stars span { display: inline-block; animation: star-in 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) backwards; }
+  #stars span:nth-child(2) { animation-delay: 0.15s; }
+  #stars span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes star-in { from { opacity: 0; transform: scale(0) rotate(-60deg); } to { opacity: 1; transform: none; } }
+  .card p { font-size: 17px; opacity: 0.75; margin-bottom: 18px; }
+  .card .cta { display: block; width: 100%; padding: 16px; font-size: 20px; }
+  .card .retry {
+    appearance: none; cursor: pointer; font: inherit; font-weight: 800; font-size: 17px; color: var(--ink);
+    background: transparent; border: 3px solid var(--ink); border-radius: 999px; width: 100%; padding: 12px; margin-top: 12px;
+  }
+  .card .again { appearance: none; border: 0; background: none; color: #4a5aa8; font: inherit; font-size: 15px; margin-top: 14px; cursor: pointer; text-decoration: underline; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Crowd Rush playable ad"></canvas>
+<div id="progress" aria-hidden="true"><div id="fill"></div></div>
+<div id="count" aria-live="polite">10</div>
+<div id="toast"></div>
+<div id="pops"></div>
+<div id="hint">DRAG TO STEER<div class="track"><span class="finger"></span></div></div>
+<button id="install" class="cta" type="button">INSTALL</button>
+<div id="end" role="dialog" aria-modal="true" aria-labelledby="end-title">
+  <div class="card">
+    <h1 id="end-title">You crushed it!</h1>
+    <div id="stars" aria-hidden="true"></div>
+    <p id="end-text">0 survivors</p>
+    <button id="end-install" class="cta" type="button">INSTALL NOW</button>
+    <button id="retry" class="retry" type="button">TRY AGAIN</button>
+    <button id="again" class="again hidden" type="button">Play again</button>
+  </div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
