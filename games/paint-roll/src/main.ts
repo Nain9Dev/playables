@@ -1,5 +1,5 @@
 import { onViewableChange, openStore, whenAdReady } from "../../../kit/sdk.ts";
-import { haptic, note, tone, unlockAudio } from "../../../kit/audio.ts";
+import { haptic, note, pauseAudio, resumeAudio, setAudioMuted, tone, unlockAudio } from "../../../kit/audio.ts";
 import { track } from "../../../kit/telemetry.ts";
 import {
   CTA_URL,
@@ -59,29 +59,21 @@ let demoDone = false;
 let nudged = false;
 let retriesLeft = RETRIES;
 let lastNearWin = "";
-let sfxMuted = false;
 
 const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
 function paintNote(index: number): void {
-  if (sfxMuted) return;
   const step = SCALE[Math.min(SCALE.length - 1, index)] ?? 0;
   tone(note(step, 440), 0.12, "triangle", 0.13);
 }
-const wallThud = (): void => { if (!sfxMuted) tone(150, 0.09, "sine", 0.12); };
-const blockedBuzz = (): void => { if (!sfxMuted) tone(110, 0.1, "square", 0.05); };
-const starChime = (): void => {
-  if (sfxMuted) return;
+const wallThud = (): void => tone(150, 0.09, "sine", 0.12);
+const blockedBuzz = (): void => tone(110, 0.1, "square", 0.05);
+const starChime = (): void =>
   [0, 4, 7, 12].forEach((s, i) => tone(note(s, 587.33), 0.2, "sine", 0.14, i * 0.045));
-};
-const milestoneChord = (): void => {
-  if (sfxMuted) return;
+const milestoneChord = (): void =>
   [0, 4, 7, 12].forEach((s, i) => tone(note(s, 392), 0.24, "triangle", 0.14, i * 0.06));
-};
-const winFanfare = (): void => {
-  if (sfxMuted) return;
+const winFanfare = (): void =>
   [0, 4, 7, 12, 16, 19].forEach((s, i) => tone(note(s), 0.28, "sine", 0.16, i * 0.08));
-};
-const loseThud = (): void => { if (!sfxMuted) tone(85, 0.36, "sawtooth", 0.12); };
+const loseThud = (): void => tone(85, 0.36, "sawtooth", 0.12);
 
 function showToast(text: string, tint: "" | "gold" | "red" = ""): void {
   toast.textContent = text;
@@ -307,8 +299,13 @@ function frame(now: number): void {
 function setPaused(value: boolean): void {
   paused = value;
   lastFrame = performance.now();
-  if (value) music.pause();
-  else if (hasMoved) music.resume();
+  if (value) {
+    music.pause();
+    pauseAudio();
+  } else if (hasMoved) {
+    music.resume();
+    resumeAudio();
+  }
 }
 
 function openFrom(origin: "top" | "end_card"): void {
@@ -330,9 +327,10 @@ againButton.addEventListener("click", () => {
 soundButton.addEventListener("click", () => {
   unlockAudio();
   music.start();
-  sfxMuted = !sfxMuted;
-  music.setMuted(sfxMuted);
-  soundButton.classList.toggle("muted", sfxMuted);
+  const nextMuted = !music.muted;
+  music.setMuted(nextMuted);
+  setAudioMuted(nextMuted);
+  soundButton.classList.toggle("muted", nextMuted);
 });
 
 let swipe: { x: number; y: number; done: boolean } | null = null;

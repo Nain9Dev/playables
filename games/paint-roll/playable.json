@@ -67,7 +67,7 @@
     "open-loop": { "status": "yes", "note": "A gradient progress bar, PAINTED % counter, MOVES chip and visible unpainted tiles keep the finish line in sight." },
     "near-miss": { "status": "yes", "note": "The last one to three unpainted tiles pulse bright gold on the board with a callout, and a loss above 80% still earns two stars." },
     "instant-retry": { "status": "yes", "note": "One tap on TRY AGAIN restarts with 3 extra moves." },
-    "sound-haptics": { "status": "yes", "note": "Ascending paint notes, wall thud, star chime, halfway chord, layered looping music with mute toggle and vibrations; audio stays off until the first swipe. Not auditioned on a real phone speaker." },
+    "sound-haptics": { "status": "yes", "note": "Ascending paint notes, wall thud, star chime, halfway chord, layered looping music with mute toggle and vibrations; audio stays off until the first swipe and suspends when hidden or not viewable. Not auditioned on a real phone speaker." },
     "cliffhanger-end": { "status": "yes", "note": "Animated stars, painted percentage, Level 2 neon maze teaser and a pulsing PLAY LEVEL 2 button that opens the store link." },
     "measured": { "status": "yes", "note": "Emits impression, demo_move, first_swipe, swipe, blocked, milestone, near_win, win, fail, retry, end_card and cta_click. No real-player data collected yet." }
   },
