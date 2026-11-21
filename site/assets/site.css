@@ -147,7 +147,8 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
   background: var(--nain-brand-black); border-radius: 999px; z-index: 3;
 }
 .phone-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.phone-screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; z-index: 2; }
+/* Transparent until the game paints, so the poster shows instead of a black flash. */
+.phone-screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; z-index: 2; }
 .phone-play {
   position: absolute; inset: 0; width: 100%; border: 0; cursor: pointer; z-index: 1; background: rgba(0, 20, 60, 0.28);
   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14%; font: inherit;
@@ -164,12 +165,13 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
 }
 
 /* Cards */
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--nain-s12) var(--nain-s8); margin-top: var(--nain-s12); align-items: start; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--nain-s12) var(--nain-s6); margin-top: var(--nain-s8); align-items: start; }
+.card .phone, .card-next .next-frame { width: min(100%, 250px); }
 .card { display: flex; flex-direction: column; align-items: center; gap: var(--nain-s6); text-align: left; }
 .card-body { width: 100%; max-width: 320px; }
 .card-body p { margin-bottom: var(--nain-s3); }
 .card-next .next-frame {
-  width: 280px; aspect-ratio: 9 / 19; border: 3px dashed var(--nain-slate-muted); border-radius: 38px;
+  aspect-ratio: 9 / 19; border: 3px dashed var(--nain-slate-muted); border-radius: 38px;
   display: grid; place-items: center; color: var(--nain-slate-muted); font-family: var(--nain-font-mono); letter-spacing: 0.3em;
 }
 
@@ -223,6 +225,58 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
   .hero-phones .phone-side { display: none; }
   .hero-phones .phone-hero { width: min(280px, 72vw); margin: 0; transform: none; }
 }
+
+/* Home hero: big type, live phones and a glow that pulls the eye to the games. */
+.hero-home { position: relative; overflow: hidden; min-height: min(94vh, 900px); display: flex; align-items: center; padding: var(--nain-s12) 0; }
+.hero-home::before {
+  content: ""; position: absolute; z-index: 0; width: 980px; height: 980px; right: -6%; top: 50%; translate: 0 -50%;
+  border-radius: 50%; filter: blur(28px); pointer-events: none; animation: glow 7s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(128, 255, 0, 0.34) 0%, rgba(0, 255, 224, 0.16) 36%, transparent 66%);
+}
+@keyframes glow { 0%, 100% { opacity: 0.75; scale: 1; } 50% { opacity: 1; scale: 1.08; } }
+.hero-home .hero-grid { position: relative; z-index: 1; width: min(100% - 2 * var(--nain-s6), var(--nain-shell)); margin-inline: auto; }
+.hero-home h1 { font-size: clamp(58px, 10.5vw, 132px); line-height: 0.92; margin-bottom: var(--nain-s6); }
+.hero-home h1 em { font-style: normal; color: var(--nain-green); text-shadow: 0 0 44px rgba(128, 255, 0, 0.6); }
+.hero-home .lead { font-size: clamp(20px, 2.4vw, 28px); font-weight: 600; }
+.btn-xl { font-size: 20px; padding: 18px 40px; border-radius: var(--nain-cap); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(128, 255, 0, 0.55); } 50% { box-shadow: 0 0 0 16px rgba(128, 255, 0, 0); } }
+.sparks { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.sparks i {
+  position: absolute; bottom: -12px; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; opacity: 0;
+  background: var(--nain-green); box-shadow: 0 0 10px var(--nain-green); animation: ember 8s linear infinite; animation-delay: var(--d);
+}
+@keyframes ember { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 0.85; } 100% { transform: translateY(-105vh) translateX(24px); opacity: 0; } }
+.hero-home .hero-phones { position: relative; z-index: 1; }
+.hero-home .hero-phones .phone-hero { width: clamp(240px, 24vw, 300px); }
+.hero-home .hero-phones .phone-side { width: clamp(170px, 17vw, 210px); }
+.hero-phones .phone { animation: float 6s ease-in-out infinite; }
+.hero-phones .phone-side:first-child { animation-delay: -2s; }
+.hero-phones .phone-side:last-child { animation-delay: -4s; }
+@keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+/* A live phone restarts its game behind its poster, so the restart is never seen. */
+.phone-screen .phone-poster { transition: opacity 0.2s; }
+.phone-screen.veil .phone-poster { z-index: 3; }
+.strip-grid b { font-size: 44px; }
+
+/* Home sections with almost no text */
+.more { display: inline-block; margin-top: var(--nain-s2); font-family: var(--nain-font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: var(--nain-track-label); text-decoration: none; }
+.more:hover, .more:focus-visible { text-decoration: underline; }
+.icons { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--nain-s6); margin: var(--nain-s8) 0 0; padding: 0; }
+@media (max-width: 900px) { .icons { grid-template-columns: repeat(2, 1fr); } }
+.icons li { display: flex; flex-direction: column; gap: var(--nain-s4); padding: var(--nain-s6); border: 1px solid var(--nain-dark-line); border-radius: var(--nain-radius-lg); background: var(--nain-dark-elevated); color: var(--nain-green); }
+.icons b { color: var(--nain-paper); font-size: 22px; line-height: 1.15; }
+.radars { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--nain-s6); margin-top: var(--nain-s8); }
+.radar-card { display: flex; flex-direction: column; align-items: center; gap: var(--nain-s1); padding: var(--nain-s4); border: 2px solid var(--nain-border-default); border-radius: var(--nain-radius-lg); text-decoration: none; transition: transform var(--nain-duration-fast) var(--nain-ease-out), box-shadow var(--nain-duration-fast) var(--nain-ease-out); }
+.radar-card:hover, .radar-card:focus-visible { transform: translate(-3px, -3px); box-shadow: var(--nain-shadow-btn-alt-hover); }
+.radar-card b { font-size: 22px; }
+.radar-card span { font-family: var(--nain-font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: var(--nain-track-label); color: var(--nain-text-secondary); }
+.fold { margin-top: var(--nain-s8); }
+.fold summary { cursor: pointer; font-family: var(--nain-font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: var(--nain-track-label); padding: var(--nain-s2) 0; color: var(--nain-text-secondary); }
+.fold[open] summary { margin-bottom: var(--nain-s4); }
+.passes { list-style: none; display: flex; flex-wrap: wrap; gap: var(--nain-s2); margin: var(--nain-s6) 0 0; padding: 0; }
+.passes li { display: flex; align-items: center; gap: var(--nain-s2); padding: var(--nain-s2) var(--nain-s4); border: 1px solid var(--nain-border-default); border-radius: var(--nain-cap); background: var(--nain-bg-surface); font-size: 14px; }
+.built-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nain-s6) var(--nain-s8); }
+.built-row h2, .built-row .chips { margin: 0; }
 
 /* Cards */
 .card .phone { transition: transform var(--nain-duration-smooth) var(--nain-ease-out); }

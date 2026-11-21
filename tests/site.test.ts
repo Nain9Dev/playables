@@ -3,8 +3,10 @@ import { validatePlayable } from "../kit/validate.ts";
 import { parseMeta } from "../site/meta.ts";
 import { PRINCIPLES, SHORT_LABEL, tally } from "../site/principles.ts";
 import {
+  LIVE_LOOP_MS,
   esc,
   formatBytes,
+  icon,
   neighbours,
   radar,
   render404,
@@ -205,6 +207,62 @@ describe("visual summaries", () => {
       expect(html).toContain(`href="#${id}"`);
     }
     for (const stat of ["stat-first", "stat-events", "stat-span"]) expect(html).toContain(`id="${stat}"`);
+  });
+});
+
+describe("home design", () => {
+  const three = (): SiteEntry[] => {
+    const a = entry();
+    return [
+      a,
+      { ...entry(), meta: { ...a.meta, slug: "second", title: "Second", order: 2 } },
+      { ...entry(), meta: { ...a.meta, slug: "third", title: "Third", order: 3 } },
+    ];
+  };
+
+  /** Words a visitor reads at first sight: no tables, folded details, scripts, styles or drawings. */
+  function visibleWords(html: string): number {
+    const text = html
+      .replace(/<(script|style|svg|table|details|footer|header)[\s\S]*?<\/\1>/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&[a-z#0-9]+;/g, " ");
+    return text.split(/\s+/).filter(Boolean).length;
+  }
+
+  it("keeps the home light on text: the point is to show, not to explain", () => {
+    // 153 words with three playables when this was written, buttons and labels included.
+    // A playable adds about seven words, so a longer paragraph is what trips this.
+    expect(visibleWords(renderIndex(three(), INFO))).toBeLessThan(170);
+  });
+
+  it("starts the hero phones live and gives them a loop shorter than any end card", () => {
+    const html = renderIndex(three(), INFO);
+    const hero = html.match(/<div class="hero-phones">([\s\S]*?)<\/div>\s*<\/div>\s*<\/section>/)?.[1] ?? "";
+    expect(hero.match(/data-live="1"/g)).toHaveLength(3);
+    expect(hero).toContain(`data-loop="${LIVE_LOOP_MS}"`);
+    expect(LIVE_LOOP_MS).toBeLessThan(15_000);
+    // Only the hero is live: the cards wait for a tap.
+    const cards = html.slice(html.indexOf('id="play"'));
+    expect(cards).not.toContain("data-live");
+  });
+
+  it("draws the glow sparks from fixed values, so the build is repeatable", () => {
+    const html = renderIndex(three(), INFO);
+    expect(html.match(/<i style="--x:/g)).toHaveLength(16);
+    expect(renderIndex(three(), INFO)).toBe(html);
+  });
+
+  it("folds the long tables and keeps the headline numbers visible", () => {
+    const html = renderIndex(three(), INFO);
+    expect(html.match(/<details class="fold">/g)).toHaveLength(2);
+    expect(html).toContain('class="radars"');
+    expect(html.match(/class="radar-card"/g)).toHaveLength(3);
+    expect(html).toContain('class="passes"');
+  });
+
+  it("has icons for the highlight row and rejects an unknown one", () => {
+    for (const name of ["bolt", "burst", "flag", "loop"]) expect(icon(name)).toContain("<path");
+    expect(() => icon("missing")).toThrow(/unknown icon/);
   });
 });
 
