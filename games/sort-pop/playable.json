@@ -1,0 +1,89 @@
+{
+  "slug": "sort-pop",
+  "title": "Sort Pop",
+  "order": 4,
+  "status": "live",
+  "tagline": "Pour, sort, pop. Fill every tube before the moves run out.",
+  "genre": "Puzzle, ball sort",
+  "duration": "30 to 45 seconds",
+  "orientation": "Portrait",
+  "hook": "The caption asks for a goal, Sort the colors in 13 moves, over seven glass tubes of mixed balls that bob gently. At 0.35 seconds a finger taps a tube and drags to another, showing the whole move, and the first pour lands with an arc, a squash and a note.",
+  "coreLoop": "Tap a tube to lift its top ball, or the whole run of equal balls, then tap another tube to pour. A pour is legal onto an empty tube or onto the same color, as far as there is room. A full tube of one color completes with a ring, sparkles and a chime that climbs a scale. Five colors, seven tubes and 13 pours. The level is made by scrambling the solved state with reverse moves, so it can always be solved.",
+  "levers": [
+    {
+      "name": "A goal as the hook",
+      "why": "A text hook that names a goal starts the player's thinking before the first input.",
+      "how": "The caption Sort the colors in 13 moves shows over the tubes and slides away after the first pour."
+    },
+    {
+      "name": "A finger that shows the move",
+      "why": "A visual demonstration needs no reading, and the first move is the moment most players decide to stay or leave.",
+      "how": "A finger taps a tube, drags to the target and taps again, using the first move of a solver, while the two tubes pulse. After four idle seconds the same finger returns with a hint for the current board."
+    },
+    {
+      "name": "A pour that feels good",
+      "why": "Tiny rewards on every action make a simple move worth repeating.",
+      "how": "Balls lift with a spring, fly in an arc, stretch as they fall and squash on landing, each with a note and a short vibration. Several balls pour one after another."
+    },
+    {
+      "name": "Rising chimes and combos",
+      "why": "A reward that grows with progress, and a bonus for back-to-back wins, make some moments bigger than others.",
+      "how": "Each completed tube adds a ring, sparkles and a chime one step higher on the scale. Completing tubes on consecutive pours shows COMBO with a camera punch and a second chime. The music adds layers as tubes are sorted."
+    },
+    {
+      "name": "Pressure with a clear limit",
+      "why": "A move limit turns a relaxed puzzle into a challenge and gives the run a fixed length.",
+      "how": "The move counter turns red and throbs under four moves, and the end card shows after at most 13 pours, so the ad stays in the 30 to 45 second window."
+    },
+    {
+      "name": "Near-win tension",
+      "why": "Being one step from winning is the strongest reason to try once more, as long as the player is still in the game.",
+      "how": "ONE POUR TO WIN appears when a single pour solves the board, LAST COLOR with one color left, and the last three moves are counted out. Losing with four tubes sorted earns two stars."
+    },
+    {
+      "name": "Second chance with a gift",
+      "why": "A loss that offers something to come back for keeps the player.",
+      "how": "The first failure offers TRY AGAIN with one extra empty tube and two more moves, on the same level. The second failure leaves only the install button."
+    },
+    {
+      "name": "Fair, solvable difficulty, tested",
+      "why": "A puzzle that cannot be won feels broken, and one that cannot be lost is boring.",
+      "how": "Tests solve 500 generated seeds by replaying their own scramble backwards, check the shortest solution with a solver, and fail if a casual bot wins less than 30 percent or more than 85 percent of 300 levels."
+    }
+  ],
+  "events": [
+    { "name": "impression", "meaning": "The ad is ready and visible, and the game starts." },
+    { "name": "first_tap", "meaning": "Milliseconds from start to the first tap. The key hook metric." },
+    { "name": "select", "meaning": "A tube was picked up. Carries the color and the size of the run." },
+    { "name": "first_pour", "meaning": "Milliseconds from start to the first legal pour." },
+    { "name": "pour", "meaning": "A pour happened. Carries the ball count, moves left and the combo." },
+    { "name": "invalid", "meaning": "A tap that could not pour or pick up. A high rate can mean the rules are unclear." },
+    { "name": "tube_complete", "meaning": "A tube was filled with one color. Carries the total, the combo and the moves left." },
+    { "name": "combo", "meaning": "Two or more tubes completed on consecutive pours." },
+    { "name": "near_win", "meaning": "A near-win message was shown, with its text and the moves left." },
+    { "name": "idle_hint", "meaning": "Nobody played for four seconds and the finger came back with a hint." },
+    { "name": "fail", "meaning": "The run was lost. Carries the reason: moves, stuck or time." },
+    { "name": "retry", "meaning": "The player took the second chance with the extra tube and moves." },
+    { "name": "replay", "meaning": "The player started the level again after the second chance was used." },
+    { "name": "win", "meaning": "Every color is sorted. Carries moves left and pours made." },
+    { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, tubes sorted and moves left." },
+    { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }
+  ],
+  "scorecard": {
+    "instant-motion": { "status": "yes", "note": "Balls bob and soft circles drift from the first frame. The demonstration finger starts at 0.35 seconds." },
+    "text-hook": { "status": "yes", "note": "The caption Sort the colors in 13 moves states the goal and the limit, and slides away after the first pour." },
+    "one-control": { "status": "yes", "note": "Only taps: one on the tube to lift, one on the target. The finger shows the full move before the player acts." },
+    "first-reward": { "status": "yes", "note": "The first pour has an arc, a squash, a note and a vibration. The level is chosen so the shortest solution fills its first tube on the third pour." },
+    "pattern-interrupt": { "status": "partial", "note": "Combos, near-win messages and music layers change the pace, but they react to the player. There is no scheduled change of scene or stakes." },
+    "variable-reward": { "status": "yes", "note": "Each tube chime is one step higher than the last, combos add a second chime and a camera punch, and the win sets off every tube at once." },
+    "open-loop": { "status": "yes", "note": "A progress bar and a SORTED x/5 counter fill up, and the move counter runs down. The bar starts with a sliver so the goal looks started." },
+    "near-miss": { "status": "yes", "note": "ONE POUR TO WIN, LAST COLOR and the last moves counted out, and a loss with four tubes sorted earns two stars." },
+    "instant-retry": { "status": "yes", "note": "One tap on TRY AGAIN restarts the same level with an extra empty tube and two more moves." },
+    "sound-haptics": { "status": "yes", "note": "Pick-up, landing, tube, combo, win and fail sounds plus looping music with a mute button, all silent until the first tap. Vibration works only where the browser has the API, so not on iOS." },
+    "cliffhanger-end": { "status": "yes", "note": "Stars, then a teaser about Level 2 with more colors and fewer free tubes. Level 2 is a teaser: the button goes to the store link." },
+    "measured": { "status": "yes", "note": "Events include first_tap, first_pour, invalid, tube_complete, combo and near_win, all listed on this page." }
+  },
+  "stack": ["TypeScript", "Three.js", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
+  "source": "https://github.com/Nain9Dev/playables/tree/main/games/sort-pop",
+  "accent": "#35d0b5"
+}
