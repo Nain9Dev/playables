@@ -24,27 +24,51 @@
 
   // Only one playable runs at a time: starting one puts the others back behind their cover,
   // so sound and CPU belong to what the visitor is playing.
+  // Put a phone back behind its cover. A phone the visitor is playing is never touched by the live loop.
+  function release(phone) {
+    var running = phone.querySelector("iframe");
+    window.clearInterval(phone._timer);
+    phone._claimed = false;
+    if (!running) return;
+    frames = frames.filter(function (frame) { return frame !== running; });
+    running.remove();
+    var screen = phone.querySelector(".phone-screen");
+    screen.classList.remove("veil");
+    if (phone._cover) screen.appendChild(phone._cover);
+  }
+
   function unmountOthers(keep) {
     document.querySelectorAll(".phone").forEach(function (other) {
-      if (other === keep) return;
-      var running = other.querySelector("iframe");
-      if (!running) return;
-      frames = frames.filter(function (frame) { return frame !== running; });
-      running.remove();
-      if (other._cover) other.querySelector(".phone-screen").appendChild(other._cover);
+      if (other !== keep) release(other);
     });
   }
 
-  function mount(phone) {
+  // The games lay their text out for a phone about 390 px wide. In a smaller frame the iframe keeps
+  // that width and is scaled down, so a small phone shows the real layout instead of a squeezed one.
+  var REF_WIDTH = 390;
+  function fit(screen, frame) {
+    var width = screen.clientWidth;
+    if (!width) return;
+    var scale = width / REF_WIDTH;
+    frame.style.width = REF_WIDTH + "px";
+    frame.style.height = screen.clientHeight / scale + "px";
+    frame.style.transformOrigin = "0 0";
+    frame.style.transform = "scale(" + scale + ")";
+  }
+
+  function mount(phone, attract) {
     var screen = phone.querySelector(".phone-screen");
     if (!screen || screen.querySelector("iframe")) return screen && screen.querySelector("iframe");
-    unmountOthers(phone);
+    // A live (attract) phone runs next to its neighbours. A phone started by the visitor runs alone.
+    if (!attract) unmountOthers(phone);
     var frame = document.createElement("iframe");
     frame.src = phone.getAttribute("data-src");
     frame.title = phone.getAttribute("data-title") || "Playable ad";
     frame.setAttribute("allow", "autoplay; fullscreen; vibrate");
     frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
     screen.appendChild(frame);
+    fit(screen, frame);
+    if (window.ResizeObserver) new ResizeObserver(function () { fit(screen, frame); }).observe(screen);
     frames.push(frame);
     var cover = phone.querySelector(".phone-play");
     if (cover) {
@@ -81,6 +105,52 @@
         });
       });
     }
+  });
+
+  // Live phones (the home hero): the games run by themselves while the hero is on screen and
+  // restart every few seconds behind a poster veil, so an end card never shows. The first input
+  // inside a phone claims it: the others stop and the visitor plays alone.
+  var livePhones = Array.prototype.slice.call(document.querySelectorAll(".phone[data-live]"));
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function startLive(phone, index) {
+    // Hidden side phones (phone widths) and claimed phones are skipped.
+    if (phone._claimed || phone.offsetParent === null || phone.querySelector("iframe")) return;
+    mount(phone, true);
+    var screen = phone.querySelector(".phone-screen");
+    var loop = (Number(phone.getAttribute("data-loop")) || 11000) + index * 1300;
+    phone._timer = window.setInterval(function () {
+      var frame = phone.querySelector("iframe");
+      if (!frame || phone._claimed) return;
+      screen.classList.add("veil");
+      window.setTimeout(function () { frame.src = phone.getAttribute("data-src"); }, 180);
+      window.setTimeout(function () { screen.classList.remove("veil"); }, 1100);
+    }, loop);
+  }
+
+  function stopLive(phone) {
+    if (!phone._claimed) release(phone);
+  }
+
+  if (livePhones.length && !reduceMotion && "IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      var visible = entries.some(function (entry) { return entry.isIntersecting; });
+      livePhones.forEach(function (phone, index) { return visible ? startLive(phone, index) : stopLive(phone); });
+    }, { threshold: 0.25 }).observe(livePhones[0].parentElement);
+  }
+
+  window.addEventListener("message", function (event) {
+    var data = event.data;
+    if (!data || data.source !== "playable" || typeof data.name !== "string" || data.name.indexOf("first_") !== 0) return;
+    var owner = livePhones.filter(function (phone) {
+      var frame = phone.querySelector("iframe");
+      return frame && frame.contentWindow === event.source;
+    })[0];
+    if (!owner || owner._claimed) return;
+    owner._claimed = true;
+    window.clearInterval(owner._timer);
+    owner.querySelector(".phone-screen").classList.remove("veil");
+    livePhones.forEach(function (other) { if (other !== owner) stopLive(other); });
   });
 
   // Live telemetry: the playable posts plain messages, the page lists them.

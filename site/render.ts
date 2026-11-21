@@ -131,18 +131,55 @@ function footer(info: SiteInfo): string {
 }
 
 /** Phone frame with a lazy iframe. The game loads only after the first tap. */
-export function phone(entry: SiteEntry, root: string, size: "hero" | "card" | "side" = "card"): string {
+export function phone(
+  entry: SiteEntry,
+  root: string,
+  size: "hero" | "card" | "side" = "card",
+  options: { live?: boolean } = {},
+): string {
   const { meta } = entry;
   const poster = entry.hasPoster
-    ? `<img class="phone-poster" src="${root}posters/${esc(meta.slug)}.jpg" alt="Screenshot of ${esc(meta.title)}" loading="lazy">`
+    ? `<img class="phone-poster" src="${root}posters/${esc(meta.slug)}.jpg" alt="Screenshot of ${esc(meta.title)}" ${options.live ? "" : 'loading="lazy"'}>`
     : "";
-  return `<div class="phone phone-${size}" data-src="${root}play/${esc(meta.slug)}.html" data-title="${esc(meta.title)}">
+  // A live phone runs its game as soon as it is on screen (attract mode) and restarts it every
+  // few seconds, so the home never shows an end card. The first tap inside it claims the phone.
+  const live = options.live ? ` data-live="1" data-loop="${LIVE_LOOP_MS}"` : "";
+  return `<div class="phone phone-${size}" data-src="${root}play/${esc(meta.slug)}.html" data-title="${esc(meta.title)}"${live}>
   <div class="phone-screen">
     ${poster}
     <button class="phone-play" type="button"><span>TAP TO PLAY</span></button>
   </div>
   <button class="phone-full" type="button" aria-label="Open ${esc(meta.title)} fullscreen">&#x2922;</button>
 </div>`;
+}
+
+/** One or two words per validator rule, for the home page. The full sentence stays in the details. */
+const RULE_SHORT: Record<string, string> = {
+  "size-hard": "Under 5 MB",
+  "size-soft": "Under 2 MB",
+  "single-file": "One file",
+  "no-network-calls": "No network calls",
+  "mraid-ready": "MRAID ready",
+  "store-via-mraid": "Store opens right",
+  viewport: "Viewport",
+  "html-document": "Valid HTML",
+};
+
+/** Milliseconds a live phone plays before its game restarts. Shorter than any end card. */
+export const LIVE_LOOP_MS = 11000;
+
+const ICONS: Record<string, string> = {
+  bolt: "M13 2 4 14h7l-1 8 9-12h-7z",
+  burst: "m12 2 2.9 6.9L22 10l-5.5 4.8L18 22l-6-3.6L6 22l1.5-7.2L2 10l7.1-1.1z",
+  flag: "M5 21V4h13l-2.5 4.5L18 13H7",
+  loop: "M4 12a8 8 0 0 1 14-5.3L20 5v6h-6l2.4-2.4A5.5 5.5 0 0 0 6.5 12M20 12a8 8 0 0 1-14 5.3L4 19v-6h6l-2.4 2.4A5.5 5.5 0 0 0 17.5 12",
+};
+
+/** Small stroke icon for the highlight row. */
+export function icon(name: keyof typeof ICONS | string): string {
+  const path = ICONS[name];
+  if (!path) throw new Error(`unknown icon: ${name}`);
+  return `<svg class="icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;
 }
 
 function chips(items: string[]): string {
@@ -272,9 +309,7 @@ export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
       </div>
       <div class="ring-wrap" title="Retention principles fully met">${scoreRing(tally(entry.meta.scorecard).yes, PRINCIPLES.length)}<span>of ${PRINCIPLES.length}</span></div>
     </div>
-    <p>${esc(entry.meta.tagline)}</p>
-    ${chips([formatBytes(entry.bytes), specBadge(entry), entry.meta.duration])}
-    <a class="btn btn-ghost" href="./${esc(entry.meta.slug)}/">See the breakdown</a>
+    <a class="more" href="./${esc(entry.meta.slug)}/">Details <span aria-hidden="true">&rarr;</span></a>
   </div>
 </article>`,
     )
@@ -283,20 +318,25 @@ export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
   // The featured playable sits in the middle and the next two flank it, so the hero shows range at a glance.
   const fan = [live[1], live[0], live[2]]
     .filter((candidate): candidate is SiteEntry => Boolean(candidate))
-    .map((candidate) => phone(candidate, "./", candidate === featured ? "hero" : "side"))
+    .map((candidate) => phone(candidate, "./", candidate === featured ? "hero" : "side", { live: true }))
     .join("");
+
+  // Fixed positions and delays (no randomness) so the build is the same on every run.
+  const sparks = Array.from(
+    { length: 16 },
+    (_, i) => `<i style="--x:${(i * 37 + 11) % 100}%;--d:${((i * 7) % 11) * 0.7}s;--s:${4 + (i % 4)}px"></i>`,
+  ).join("");
 
   const body = `${header("./")}
 <main>
-<section class="hero surface-deep blueprint">
+<section class="hero hero-home surface-deep blueprint">
+  <div class="sparks" aria-hidden="true">${sparks}</div>
   <div class="shell hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow on-deep">Playable ads, built to be replayed</p>
-      <h1>Playables that make you tap one more time.</h1>
-      <p class="lead">Single-file HTML5 ads built with Three.js. Tuned for the first five seconds, instrumented for retention, and checked against ad-network specs before they ship.</p>
+      <h1>Tap. Play. <em>Repeat.</em></h1>
+      <p class="lead">Playable ads you cannot put down.</p>
       <div class="actions">
-        <a class="btn btn-green" href="#play">Play ${esc(featured.meta.title)}</a>
-        <a class="btn btn-line" href="#verified">See the spec check</a>
+        <a class="btn btn-green btn-xl" href="#play">Play now</a>
       </div>
     </div>
     <div class="hero-phones">${fan}</div>
@@ -314,18 +354,12 @@ export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
 
 <section class="section" id="play">
   <div class="shell">
-    <p class="eyebrow">See it live</p>
-    <h2>Play it for yourself.</h2>
-    <p class="lead muted">Tap a phone to start. Each one is the real file an ad network would receive.</p>
+    <h2>Pick one.</h2>
     <div class="cards">
 ${cards}
       <article class="card card-next" aria-label="More playables coming">
         <div class="next-frame"><span>NEXT</span></div>
-        <div class="card-body">
-          <p class="eyebrow">In the queue</p>
-          <h3>More playables</h3>
-          <p>New mechanics, one at a time. Each gets the same breakdown and the same spec check.</p>
-        </div>
+        <div class="card-body"><h3>More soon</h3></div>
       </article>
     </div>
   </div>
@@ -333,45 +367,37 @@ ${cards}
 
 <section class="section surface-deep blueprint" id="juice">
   <div class="shell">
-    <p class="eyebrow on-deep">What keeps people tapping</p>
-    <h2>Four ideas behind every playable.</h2>
-    <div class="grid-4">
-      <article class="panel"><h3>The first five seconds</h3><p>No title screen. The game is already moving when the ad appears, and the first tap pays off at once.</p></article>
-      <article class="panel"><h3>Juice on every tap</h3><p>Squash, sparks, sound, a zoom punch and a short vibration. The mechanic answers the player every time.</p></article>
-      <article class="panel"><h3>A finish line in sight</h3><p>A progress bar and a near-goal message use the goal-gradient effect, so people speed up near the end.</p></article>
-      <article class="panel"><h3>A second chance</h3><p>A failure offers a retry before the install button takes over, so a miss does not end the ad.</p></article>
-    </div>
+    <h2>Built to keep you tapping.</h2>
+    <ul class="icons">
+      <li>${icon("bolt")}<b>Moving at frame one</b></li>
+      <li>${icon("burst")}<b>Juice on every tap</b></li>
+      <li>${icon("flag")}<b>Finish line in sight</b></li>
+      <li>${icon("loop")}<b>A second chance</b></li>
+    </ul>
   </div>
 </section>
 
 <section class="section" id="scorecard">
   <div class="shell">
-    <p class="eyebrow">Retention scorecard</p>
-    <h2>Scored against twelve habits of short-video feeds.</h2>
-    <p class="lead muted">Every playable scores itself on each principle and says where it lives in the code. A partial score is a known gap, kept visible so it gets fixed.</p>
-    ${scorecardMatrix(live)}
+    <h2>Twelve habits. Scored honestly.</h2>
+    <div class="radars">${live.map((entry) => `<a class="radar-card" href="./${esc(entry.meta.slug)}/#scorecard">${radar(entry)}<b>${esc(entry.meta.title)}</b><span>${tally(entry.meta.scorecard).yes} of ${PRINCIPLES.length}</span></a>`).join("")}</div>
+    <details class="fold"><summary>Compare every principle</summary>${scorecardMatrix(live)}</details>
   </div>
 </section>
 
 <section class="section surface-sunken" id="verified">
   <div class="shell">
-    <p class="eyebrow">Verified before it ships</p>
-    <h2>The build fails if the file breaks a network rule.</h2>
-    <p class="lead muted">A fail-closed validator runs on every build and publishes nothing that breaks the AppLovin and Meta limits. The table is the real result for ${esc(featured.meta.title)}.</p>
-    ${ruleTable(featured)}
-    <p class="note mono">SHA-256 ${esc(featured.sha256)}</p>
+    <h2>Checked before every ship.</h2>
+    <ul class="passes">${featured.verdict.rules.map((rule) => `<li class="${rule.passed ? "ok" : rule.severity === "error" ? "bad" : "warn"}"><span class="verdict ${rule.passed ? "pass" : rule.severity === "error" ? "fail" : "warn"}">${rule.passed ? "PASS" : rule.severity === "error" ? "FAIL" : "WARN"}</span>${esc(RULE_SHORT[rule.id] ?? rule.id)}</li>`).join("")}</ul>
+    <details class="fold"><summary>Details for ${esc(featured.meta.title)}</summary>${ruleTable(featured)}<p class="note mono">SHA-256 ${esc(featured.sha256)}</p></details>
   </div>
 </section>
 
 <section class="section surface-deep blueprint" id="built">
-  <div class="shell two-col">
-    <div>
-      <p class="eyebrow on-deep">How it is built</p>
-      <h2>No engine. No runtime assets.</h2>
-      <p class="muted">TypeScript with Three.js named imports, bundled by Vite into one HTML file. Sound is synthesized with Web Audio. Game rules live in pure modules with unit tests, and rendering stays separate. Events leave the ad as plain messages, so the same hook can feed a network's analytics.</p>
-      <a class="btn btn-ghost" href="${esc(info.repoUrl)}" rel="noopener">Read the source</a>
-    </div>
-    ${chips(["TypeScript", `Three.js ${info.threeVersion}`, "Vite", "Vitest", "MRAID 2.0", "Web Audio", "GitHub Actions"])}
+  <div class="shell built-row">
+    <h2>No engine. One file.</h2>
+    ${chips(["TypeScript", `Three.js ${info.threeVersion}`, "Vite", "Vitest", "MRAID 2.0", "Web Audio"])}
+    <a class="btn btn-ghost" href="${esc(info.repoUrl)}" rel="noopener">Source</a>
   </div>
 </section>
 </main>
