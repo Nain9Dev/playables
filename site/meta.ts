@@ -1,3 +1,5 @@
+import { PRINCIPLES, type Score } from "./principles.ts";
+
 /**
  * Metadata of one playable (`games/<slug>/playable.json`). The site build refuses
  * to publish a playable whose metadata is incomplete: a missing field fails the
@@ -16,6 +18,8 @@ export interface EventDoc {
 }
 
 export interface PlayableMeta {
+  /** Score on every retention principle, keyed by principle id. */
+  scorecard: Record<string, Score>;
   slug: string;
   title: string;
   order: number;
@@ -61,6 +65,24 @@ function asRecord(value: unknown, where: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function parseScorecard(value: unknown, where: string): Record<string, Score> {
+  const record = asRecord(value, `${where} scorecard`);
+  const known = new Set(PRINCIPLES.map((principle) => principle.id));
+  for (const key of Object.keys(record)) {
+    if (!known.has(key)) throw new Error(`${where}: scorecard has an unknown principle "${key}"`);
+  }
+  const out: Record<string, Score> = {};
+  for (const principle of PRINCIPLES) {
+    const entry = asRecord(record[principle.id], `${where} scorecard.${principle.id}`);
+    const status = entry["status"];
+    if (status !== "yes" && status !== "partial" && status !== "no") {
+      throw new Error(`${where}: scorecard.${principle.id}.status must be "yes", "partial" or "no"`);
+    }
+    out[principle.id] = { status, note: text(entry, "note", `${where} scorecard.${principle.id}`) };
+  }
+  return out;
+}
+
 export function parseMeta(raw: unknown, folderName: string): PlayableMeta {
   const where = `games/${folderName}/playable.json`;
   const record = asRecord(raw, where);
@@ -94,6 +116,7 @@ export function parseMeta(raw: unknown, folderName: string): PlayableMeta {
   }
 
   return {
+    scorecard: parseScorecard(record["scorecard"], where),
     slug,
     title: text(record, "title", where),
     order,

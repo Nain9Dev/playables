@@ -4,6 +4,7 @@
  */
 import type { Verdict } from "../kit/validate.ts";
 import type { PlayableMeta } from "./meta.ts";
+import { PRINCIPLES, STATUS_LABEL, tally, type Status } from "./principles.ts";
 
 export interface SiteEntry {
   meta: PlayableMeta;
@@ -14,6 +15,8 @@ export interface SiteEntry {
 }
 
 export interface SiteInfo {
+  /** Public address of the site, with a trailing slash. Used for canonical and social links. */
+  siteUrl: string;
   repoUrl: string;
   contactEmail: string;
   threeVersion: string;
@@ -47,9 +50,22 @@ interface PageOptions {
   root: string;
   body: string;
   current: string;
+  /** Absolute public address of site (SiteInfo.siteUrl). */
+  siteUrl: string;
+  /** Path of this page below the site root, such as "" or "stack-tower/". */
+  path: string;
+  /** Poster path below the site root for social cards, such as "posters/stack-tower.jpg". */
+  image?: string;
+  noindex?: boolean;
 }
 
-function page({ title, description, root, body, current }: PageOptions): string {
+function page({ title, description, root, body, current, siteUrl, path, image, noindex }: PageOptions): string {
+  const canonical = `${siteUrl}${path}`;
+  const social = image
+    ? `<meta property="og:image" content="${esc(siteUrl + image)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="${esc(siteUrl + image)}">`
+    : `<meta name="twitter:card" content="summary">`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -58,9 +74,13 @@ function page({ title, description, root, body, current }: PageOptions): string 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <meta name="theme-color" content="#002B66">
+${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${esc(canonical)}">`}
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="NainDev Playables">
+<meta property="og:url" content="${esc(canonical)}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
+${social}
 <link rel="icon" href="${root}assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,6 +106,7 @@ function header(root: string): string {
   </a>
   <nav class="topnav" aria-label="Sections">
     <a href="${root}#play">Play</a>
+    <a href="${root}#scorecard">Scorecard</a>
     <a href="${root}#verified">Spec check</a>
     <a href="${root}#built">Stack</a>
     <button class="theme-toggle" type="button" aria-label="Switch light or dark theme">Theme</button>
@@ -143,6 +164,43 @@ export function ruleTable(entry: SiteEntry): string {
     })
     .join("");
   return `<div class="table-wrap"><table class="table"><thead><tr><th>Result</th><th>Rule</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function scoreBadge(status: Status): string {
+  return `<span class="score ${status}">${STATUS_LABEL[status]}</span>`;
+}
+
+/** One playable: every principle, its status, and where it lives in the game. */
+export function scorecardTable(entry: SiteEntry): string {
+  const rows = PRINCIPLES.map((principle) => {
+    const score = entry.meta.scorecard[principle.id];
+    if (!score) throw new Error(`${entry.meta.slug}: missing score for ${principle.id}`);
+    return `<tr><th scope="row">${esc(principle.title)}<span class="sub">${esc(principle.description)}</span></th><td>${scoreBadge(score.status)}</td><td>${esc(score.note)}</td></tr>`;
+  }).join("");
+  return `<div class="table-wrap"><table class="table table-score"><thead><tr><th>Principle</th><th>Met</th><th>Where it lives</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/** All playables side by side: one row per principle, one column per playable. */
+export function scorecardMatrix(entries: SiteEntry[]): string {
+  const head = entries
+    .map((entry) => `<th scope="col"><a href="./${esc(entry.meta.slug)}/">${esc(entry.meta.title)}</a></th>`)
+    .join("");
+  const rows = PRINCIPLES.map((principle) => {
+    const cells = entries
+      .map((entry) => {
+        const score = entry.meta.scorecard[principle.id];
+        return `<td>${score ? scoreBadge(score.status) : ""}</td>`;
+      })
+      .join("");
+    return `<tr><th scope="row">${esc(principle.title)}<span class="sub">${esc(principle.description)}</span></th>${cells}</tr>`;
+  }).join("");
+  const totals = entries
+    .map((entry) => {
+      const { yes, partial, total } = tally(entry.meta.scorecard);
+      return `<td><b>${yes}/${total}</b><span class="sub">${partial} partial</span></td>`;
+    })
+    .join("");
+  return `<div class="table-wrap"><table class="table table-matrix"><thead><tr><th>Principle</th>${head}</tr></thead><tbody>${rows}<tr class="total"><th scope="row">Fully met</th>${totals}</tr></tbody></table></div>`;
 }
 
 export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
@@ -226,7 +284,16 @@ ${cards}
   </div>
 </section>
 
-<section class="section" id="verified">
+<section class="section" id="scorecard">
+  <div class="shell">
+    <p class="eyebrow">Retention scorecard</p>
+    <h2>Scored against twelve habits of short-video feeds.</h2>
+    <p class="lead muted">Every playable scores itself on each principle and says where it lives in the code. A partial score is a known gap, kept visible so it gets fixed.</p>
+    ${scorecardMatrix(live)}
+  </div>
+</section>
+
+<section class="section surface-sunken" id="verified">
   <div class="shell">
     <p class="eyebrow">Verified before it ships</p>
     <h2>The build fails if the file breaks a network rule.</h2>
@@ -236,10 +303,10 @@ ${cards}
   </div>
 </section>
 
-<section class="section surface-sunken" id="built">
+<section class="section surface-deep blueprint" id="built">
   <div class="shell two-col">
     <div>
-      <p class="eyebrow">How it is built</p>
+      <p class="eyebrow on-deep">How it is built</p>
       <h2>No engine. No runtime assets.</h2>
       <p class="muted">TypeScript with Three.js named imports, bundled by Vite into one HTML file. Sound is synthesized with Web Audio. Game rules live in pure modules with unit tests, and rendering stays separate. Events leave the ad as plain messages, so the same hook can feed a network's analytics.</p>
       <a class="btn btn-ghost" href="${esc(info.repoUrl)}" rel="noopener">Read the source</a>
@@ -257,7 +324,55 @@ ${footer(info)}`;
     root: "./",
     body,
     current: "Playables",
+    siteUrl: info.siteUrl,
+    path: "",
+    ...(featured.hasPoster ? { image: `posters/${featured.meta.slug}.jpg` } : {}),
   });
+}
+
+/** Minimal not-found page for GitHub Pages. It points back to the home page. */
+export function render404(info: SiteInfo): string {
+  const body = `${header("/")}
+<main>
+<section class="section">
+  <div class="shell">
+    <p class="eyebrow">404</p>
+    <h1>That playable is not here.</h1>
+    <p class="lead muted">The page may have moved. Every playable is on the home page.</p>
+    <div class="actions"><a class="btn btn-ghost" href="/">Back to the playables</a></div>
+  </div>
+</section>
+</main>
+${footer(info)}`;
+  return page({
+    title: "Not found | NainDev Playables",
+    description: "This page does not exist.",
+    root: "/",
+    body,
+    current: "Playables",
+    siteUrl: info.siteUrl,
+    path: "404.html",
+    noindex: true,
+  });
+}
+
+/** sitemap.xml with the home page and one page per live playable. */
+export function renderSitemap(entries: SiteEntry[], info: SiteInfo): string {
+  const live = entries.filter((entry) => entry.meta.status === "live").sort((a, b) => a.meta.order - b.meta.order);
+  const urls = [info.siteUrl, ...live.map((entry) => `${info.siteUrl}${entry.meta.slug}/`)];
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((url) => `  <url><loc>${esc(url)}</loc></url>`).join("\n")}
+</urlset>
+`;
+}
+
+export function renderRobots(info: SiteInfo): string {
+  return `User-agent: *
+Allow: /
+
+Sitemap: ${info.siteUrl}sitemap.xml
+`;
 }
 
 export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
@@ -315,7 +430,16 @@ export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
   </div>
 </section>
 
-<section class="section" id="telemetry">
+<section class="section" id="scorecard">
+  <div class="shell">
+    <p class="eyebrow">Retention scorecard</p>
+    <h2>${tally(meta.scorecard).yes} of ${PRINCIPLES.length} principles fully met.</h2>
+    <p class="lead muted">${tally(meta.scorecard).partial === 0 ? "No known gaps." : `${tally(meta.scorecard).partial} partial, each one a known gap.`} Every line says where the principle lives in the game.</p>
+    ${scorecardTable(entry)}
+  </div>
+</section>
+
+<section class="section surface-sunken" id="telemetry">
   <div class="shell two-col">
     <div>
       <p class="eyebrow">Live telemetry</p>
@@ -365,5 +489,8 @@ ${footer(info)}`;
     root: "../",
     body,
     current: "Playables",
+    siteUrl: info.siteUrl,
+    path: `${meta.slug}/`,
+    ...(entry.hasPoster ? { image: `posters/${meta.slug}.jpg` } : {}),
   });
 }

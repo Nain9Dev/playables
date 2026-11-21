@@ -21,12 +21,14 @@ const canvas = element<HTMLCanvasElement>("stage");
 const scoreText = element("score");
 const toast = element("toast");
 const hint = element("hint");
+const caption = element("caption");
 const fill = element("fill");
 const pops = element("pops");
 const endCard = element("end");
 const endTitle = element("end-title");
 const endText = element("end-text");
 const endStars = element("stars");
+const teaser = element("teaser");
 const retryButton = element("retry");
 const againButton = element("again");
 
@@ -122,6 +124,8 @@ function showEndCard(outcome: "win" | "fail" | "time"): void {
     endTitle.textContent =
       outcome === "win" ? "Perfect tower!" : outcome === "fail" ? "So close!" : "Nice stack!";
     endText.textContent = `Score ${game.score}`;
+    // A teaser of what comes next pulls the player forward, whatever the result.
+    teaser.textContent = outcome === "win" ? "Level 2: 20 blocks, faster swings" : "Level 2 unlocks at 14 blocks";
     renderStars(stars);
     const canRetry = outcome !== "win" && retriesLeft > 0;
     retryButton.classList.toggle("hidden", !canRetry);
@@ -137,6 +141,7 @@ function handleDrop(): void {
   hint.classList.add("hidden");
   if (!hasTapped) {
     hasTapped = true;
+    window.setTimeout(() => caption.classList.add("gone"), 600);
     track("first_tap", { ms: Math.round(performance.now() - startedAt) });
   }
   idleSeconds = 0;
@@ -196,6 +201,15 @@ function handleDrop(): void {
     track("win", { score: game.score });
     showEndCard("win");
     return;
+  }
+
+  // Pattern interrupt at the halfway mark: a burst, a punch and a chord break the rhythm.
+  if (game.level === Math.floor(CONFIG.levelsToWin / 2)) {
+    showToast("HALFWAY!", true);
+    view.sparkle(top, game.level, 30);
+    view.punch(0.09);
+    [0, 4, 7].forEach((step, i) => tone(note(step), 0.25, "sine", 0.14, i * 0.06));
+    track("milestone", { name: "halfway", level: game.level });
   }
 
   const tease = nearGoalMessage(game.level, CONFIG.levelsToWin);

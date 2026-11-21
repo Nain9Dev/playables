@@ -8,7 +8,15 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { join, resolve } from "node:path";
 import { validatePlayable } from "../kit/validate.ts";
 import { parseMeta } from "../site/meta.ts";
-import { renderDetail, renderIndex, type SiteEntry, type SiteInfo } from "../site/render.ts";
+import {
+  render404,
+  renderDetail,
+  renderIndex,
+  renderRobots,
+  renderSitemap,
+  type SiteEntry,
+  type SiteInfo,
+} from "../site/render.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const gamesDir = join(root, "games");
@@ -25,6 +33,7 @@ function countTests(): number {
 const threeVersion = (JSON.parse(readFileSync(join(root, "node_modules", "three", "package.json"), "utf8")) as { version: string }).version;
 
 const info: SiteInfo = {
+  siteUrl: "https://playables.naindev.com/",
   repoUrl: "https://github.com/Nain9Dev/playables",
   contactEmail: "contact@naindev.com",
   threeVersion,
@@ -81,6 +90,9 @@ for (const entry of entries) {
 }
 
 writeFileSync(join(dist, "index.html"), renderIndex(entries, info));
+writeFileSync(join(dist, "404.html"), render404(info));
+writeFileSync(join(dist, "robots.txt"), renderRobots(info));
+writeFileSync(join(dist, "sitemap.xml"), renderSitemap(entries, info));
 writeFileSync(
   join(dist, "manifest.json"),
   JSON.stringify(

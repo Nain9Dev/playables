@@ -31,12 +31,14 @@ const canvas = element<HTMLCanvasElement>("stage");
 const countLabel = element("count");
 const toast = element("toast");
 const hint = element("hint");
+const caption = element("caption");
 const fill = element("fill");
 const pops = element("pops");
 const endCard = element("end");
 const endTitle = element("end-title");
 const endText = element("end-text");
 const endStars = element("stars");
+const teaser = element("teaser");
 const retryButton = element("retry");
 const againButton = element("again");
 
@@ -121,6 +123,8 @@ function showEndCard(outcome: "win" | "fail" | "time"): void {
     const stars = starsFor(won, remaining, countAtBoss);
     endTitle.textContent = won ? "You crushed it!" : outcome === "fail" ? "So close!" : "Nice run!";
     endText.textContent = won ? `${remaining} survivors` : `Crowd ${game.count} vs ${level.enemy}`;
+    // A teaser of what comes next pulls the player forward, whatever the result.
+    teaser.textContent = won ? "Level 2: a boss three times bigger" : "Beat the boss to unlock Level 2";
     renderStars(stars);
     const canRetry = !won && retriesLeft > 0;
     retryButton.textContent = canRetry ? `TRY AGAIN, +${RETRY_BONUS} CROWD` : "TRY AGAIN";
@@ -173,6 +177,13 @@ function handle(event: GameEvent): void {
       after: event.after,
     });
     if (!positive) track("bad_gate", { row: event.row });
+    // Pattern interrupt at the halfway row: a burst, a field-of-view kick and a chord.
+    if (event.row === Math.floor(level.rows.length / 2) - 1 && event.after > 0) {
+      showToast("HALFWAY!", "gold");
+      view.kickFov(13);
+      [0, 4, 7].forEach((step, i) => tone(note(step, 392), 0.25, "sine", 0.14, i * 0.06));
+      track("milestone", { name: "halfway", row: event.row });
+    }
     if (event.row === level.rows.length - 1 && event.after > 0) showToast("BOSS AHEAD", "red");
   } else if (event.type === "boss") {
     countAtBoss = event.count;
@@ -282,6 +293,7 @@ function steerFrom(clientX: number): void {
     hasInput = true;
     hint.classList.add("hidden");
     unlockAudio();
+    window.setTimeout(() => caption.classList.add("gone"), 700);
     track("first_input", { ms: Math.round(performance.now() - startedAt) });
   }
   idleSeconds = 0;

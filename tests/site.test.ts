@@ -1,9 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { validatePlayable } from "../kit/validate.ts";
 import { parseMeta } from "../site/meta.ts";
-import { esc, formatBytes, renderDetail, renderIndex, type SiteEntry, type SiteInfo } from "../site/render.ts";
+import { PRINCIPLES, tally } from "../site/principles.ts";
+import {
+  esc,
+  formatBytes,
+  render404,
+  renderDetail,
+  renderIndex,
+  renderRobots,
+  renderSitemap,
+  scorecardMatrix,
+  scorecardTable,
+  type SiteEntry,
+  type SiteInfo,
+} from "../site/render.ts";
+
+const SCORECARD = Object.fromEntries(
+  PRINCIPLES.map((principle, i) => [
+    principle.id,
+    { status: i % 4 === 3 ? "partial" : "yes", note: `Note for ${principle.id}.` },
+  ]),
+);
 
 const GOOD_META = {
+  scorecard: SCORECARD,
   slug: "demo-game",
   title: "Demo <Game>",
   order: 1,
@@ -22,6 +43,7 @@ const GOOD_META = {
 };
 
 const INFO: SiteInfo = {
+  siteUrl: "https://example.com/",
   repoUrl: "https://github.com/example/site",
   contactEmail: "hello@example.com",
   threeVersion: "0.1.0",
@@ -64,6 +86,66 @@ describe("parseMeta", () => {
 
   it("rejects something that is not an object", () => {
     expect(() => parseMeta(null, "demo-game")).toThrow(/expected an object/);
+  });
+
+  it("requires a score for every retention principle", () => {
+    const missing = { ...SCORECARD };
+    delete missing["measured"];
+    expect(() => parseMeta({ ...GOOD_META, scorecard: missing }, "demo-game")).toThrow(/measured/);
+  });
+
+  it("rejects an unknown principle, a bad status and an empty note", () => {
+    expect(() => parseMeta({ ...GOOD_META, scorecard: { ...SCORECARD, invented: { status: "yes", note: "x" } } }, "demo-game")).toThrow(/unknown principle/);
+    expect(() => parseMeta({ ...GOOD_META, scorecard: { ...SCORECARD, measured: { status: "great", note: "x" } } }, "demo-game")).toThrow(/status/);
+    expect(() => parseMeta({ ...GOOD_META, scorecard: { ...SCORECARD, measured: { status: "yes", note: " " } } }, "demo-game")).toThrow(/note/);
+  });
+});
+
+describe("scorecard", () => {
+  it("tallies met and partial principles", () => {
+    const meta = parseMeta(GOOD_META, "demo-game");
+    const { yes, partial, total } = tally(meta.scorecard);
+    expect(total).toBe(PRINCIPLES.length);
+    expect(yes + partial).toBe(PRINCIPLES.length);
+    expect(partial).toBe(Math.floor(PRINCIPLES.length / 4));
+  });
+
+  it("renders every principle in the table and the matrix", () => {
+    const table = scorecardTable(entry());
+    const matrix = scorecardMatrix([entry()]);
+    for (const principle of PRINCIPLES) {
+      expect(table).toContain(esc(principle.title));
+      expect(matrix).toContain(esc(principle.title));
+    }
+    expect(table).toContain("Note for measured.");
+  });
+});
+
+describe("search and social metadata", () => {
+  it("sets a canonical link and a social image from the poster", () => {
+    const withPoster = { ...entry(), hasPoster: true };
+    const html = renderDetail(withPoster, INFO);
+    expect(html).toContain('<link rel="canonical" href="https://example.com/demo-game/">');
+    expect(html).toContain('<meta property="og:image" content="https://example.com/posters/demo-game.jpg">');
+  });
+
+  it("lists the home page and every live playable in the sitemap", () => {
+    const draft = entry();
+    draft.meta = { ...draft.meta, slug: "other", status: "draft" };
+    const xml = renderSitemap([entry(), draft], INFO);
+    expect(xml).toContain("<loc>https://example.com/</loc>");
+    expect(xml).toContain("<loc>https://example.com/demo-game/</loc>");
+    expect(xml).not.toContain("/other/");
+  });
+
+  it("points robots.txt at the sitemap", () => {
+    expect(renderRobots(INFO)).toContain("Sitemap: https://example.com/sitemap.xml");
+  });
+
+  it("keeps the 404 page out of the index", () => {
+    const html = render404(INFO);
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toContain('rel="canonical"');
   });
 });
 

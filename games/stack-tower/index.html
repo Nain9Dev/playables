@@ -35,6 +35,13 @@
   #toast.show { animation: pop 0.8s ease-out; }
   #toast.gold { color: #ffe14d; }
   @keyframes pop { 0% { opacity: 0; transform: scale(0.6); } 20% { opacity: 1; transform: scale(1.15); } 100% { opacity: 0; transform: scale(1) translateY(-14px); } }
+  #caption {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 150px); left: 0; right: 0; text-align: center;
+    color: var(--hud); font-size: 30px; font-weight: 900; text-shadow: var(--shadow); pointer-events: none;
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  #caption.gone { opacity: 0; transform: translateY(-16px); }
+  #caption b { color: #ffe14d; }
   #pops { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
   .score-pop {
     position: absolute; top: 46%; left: 50%; color: #fff; font-weight: 800; font-size: 34px; text-shadow: var(--shadow);
@@ -84,6 +91,8 @@
   #stars span:nth-child(3) { animation-delay: 0.3s; }
   @keyframes star-in { from { opacity: 0; transform: scale(0) rotate(-60deg); } to { opacity: 1; transform: none; } }
   .card p { font-size: 17px; opacity: 0.75; margin-bottom: 18px; }
+  .card p.teaser { font-weight: 800; opacity: 1; color: #d64b00; margin-top: -8px; animation: tease 1.2s ease-in-out infinite; }
+  @keyframes tease { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
   .card .cta { display: block; width: 100%; padding: 16px; font-size: 20px; }
   .card .retry {
     appearance: none; cursor: pointer; font: inherit; font-weight: 800; font-size: 17px; color: var(--ink);
@@ -100,6 +109,7 @@
 <canvas id="stage" aria-label="Stack Tower playable ad"></canvas>
 <div id="progress" aria-hidden="true"><div id="fill"></div></div>
 <div id="score" aria-live="polite">0</div>
+<div id="caption">Can you stack <b>14</b>?</div>
 <div id="toast"></div>
 <div id="pops"></div>
 <div id="hint">TAP TO STACK<span class="finger"></span></div>
@@ -109,7 +119,8 @@
     <h1 id="end-title">Nice stack!</h1>
     <div id="stars" aria-hidden="true"></div>
     <p id="end-text">Score 0</p>
-    <button id="end-install" class="cta" type="button">INSTALL NOW</button>
+    <p id="teaser" class="teaser"></p>
+    <button id="end-install" class="cta" type="button">PLAY LEVEL 2</button>
     <button id="retry" class="retry" type="button">TRY AGAIN</button>
     <button id="again" class="again hidden" type="button">Play again</button>
   </div>
