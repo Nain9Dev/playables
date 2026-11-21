@@ -257,7 +257,13 @@ function afterPour(result: NonNullable<ReturnType<SortGame["pour"]>>): void {
     showPop("+1", result.to);
     bump(tubesChip);
     track("tube_complete", { total: result.completedTotal, combo: result.combo, movesLeft: result.movesLeft });
-    if (result.combo >= 2 && result.outcome === "playing") {
+    if (result.milestone && result.outcome === "playing") {
+      showToast("HALFWAY!", "gold");
+      view.punch(0.08);
+      [0, 4, 7, 12].forEach((s, i) => tone(note(s, 392), 0.24, "triangle", 0.14, i * 0.06));
+      haptic(35);
+      track("milestone", { tubes: result.completedTotal });
+    } else if (result.combo >= 2 && result.outcome === "playing") {
       showToast(`COMBO x${result.combo}!`, "gold");
       view.punch(0.04 + result.combo * 0.015);
       track("combo", { count: result.combo });
@@ -374,10 +380,10 @@ function frame(now: number): void {
   lastFrame = now;
 
   if (!paused && !ended) {
-    activeSeconds += dt;
+    if (hasTapped) activeSeconds += dt;
     if (performance.now() >= busyUntil) idleSeconds += dt;
     if (!hintShown && hasPoured && idleSeconds >= IDLE_HINT_SECONDS) showHint();
-    if (activeSeconds >= MAX_ACTIVE_SECONDS) {
+    if (hasTapped && activeSeconds >= MAX_ACTIVE_SECONDS) {
       track("fail", { reason: "time", tubes: game.completed });
       showEndCard("time");
     }

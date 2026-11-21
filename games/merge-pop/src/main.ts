@@ -63,6 +63,7 @@ let ended = false;
 let lastFrame = 0;
 let startedAt = 0;
 let activeSeconds = 0;
+let introSeconds = 0;
 let idleSeconds = 0;
 let hasMoved = false;
 let demoDone = false;
@@ -191,6 +192,7 @@ function startRound(bonusMoves: number): void {
   view.setBoard(game.tiles);
   ended = false;
   activeSeconds = 0;
+  introSeconds = 0;
   idleSeconds = 0;
   announcedNearWin = false;
   boosterOffered = false;
@@ -366,17 +368,18 @@ function frame(now: number): void {
   lastFrame = now;
 
   if (!paused && !ended) {
-    activeSeconds += dt;
+    if (hasMoved) activeSeconds += dt;
+    else introSeconds += dt;
     idleSeconds += dt;
     if (!hasMoved) {
-      if (!demoDone && activeSeconds >= DEMO_MOVE_SECONDS) demoMove();
+      if (!demoDone && introSeconds >= DEMO_MOVE_SECONDS) demoMove();
       if (!nudged && idleSeconds >= IDLE_NUDGE_SECONDS) {
         nudged = true;
         hint.classList.add("nudge");
         track("idle_nudge");
       }
     }
-    if (activeSeconds >= MAX_ACTIVE_SECONDS) showEndCard("time");
+    if (hasMoved && activeSeconds >= MAX_ACTIVE_SECONDS) showEndCard("time");
     music.setIntensity(musicLevel());
   }
 

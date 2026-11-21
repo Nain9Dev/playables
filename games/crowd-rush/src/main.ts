@@ -393,7 +393,7 @@ function frame(now: number): void {
   lastFrame = now;
 
   if (!paused && !ended) {
-    activeSeconds += dt;
+    if (hasInput) activeSeconds += dt;
     if (game.phase === "run") {
       for (const event of game.update(dt, steer)) handle(event);
       shown += (game.count - shown) * Math.min(1, dt * 10);
@@ -405,7 +405,7 @@ function frame(now: number): void {
           track("idle_nudge");
         }
       }
-      if (activeSeconds >= MAX_ACTIVE_SECONDS) showEndCard("time");
+      if (hasInput && activeSeconds >= MAX_ACTIVE_SECONDS) showEndCard("time");
     } else {
       stepBattle(dt);
     }

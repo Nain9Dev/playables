@@ -68,6 +68,21 @@ export function isGoldenLevel(level: number): boolean {
   return level > 0 && level % CONFIG.goldenEvery === 0;
 }
 
+/** Pick one surprise golden block in each 5-block window from a seed (variable reward). */
+export function surpriseGoldenLevels(seed: number, maxLevel: number = CONFIG.levelsToWin): Set<number> {
+  let state = (seed >>> 0) || 1;
+  const next = (): number => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const out = new Set<number>();
+  for (let start = 2; start < maxLevel; start += CONFIG.goldenEvery) {
+    const end = Math.min(maxLevel - 1, start + CONFIG.goldenEvery - 2);
+    if (end >= start) out.add(start + Math.floor(next() * (end - start + 1)));
+  }
+  return out;
+}
+
 /** A cut with a thin overhang: the player was almost perfect. */
 export function isNearMiss(placement: Placement): boolean {
   return (
@@ -161,10 +176,20 @@ export class StackGame {
   readonly blocks: Block[] = [
     { x: 0, z: 0, w: CONFIG.baseSize, d: CONFIG.baseSize },
   ];
+  private readonly surprises: Set<number>;
   score = 0;
   combo = 0;
   over = false;
   won = false;
+
+  constructor(seed?: number) {
+    this.surprises = seed === undefined ? new Set() : surpriseGoldenLevels(seed);
+  }
+
+  /** True when the block placed at `level` is a scheduled or surprise golden block. */
+  isGolden(level: number): boolean {
+    return isGoldenLevel(level) || this.surprises.has(level);
+  }
 
   /** Number of blocks stacked on top of the base. */
   get level(): number {
@@ -220,7 +245,7 @@ export class StackGame {
       return { ...placement, index: null, axis, points: 0, golden: false, nearMiss: false };
     }
 
-    const golden = isGoldenLevel(this.level + 1);
+    const golden = this.isGolden(this.level + 1);
     let points: number;
     let placed = placement.placed;
     if (placement.kind === "perfect") {

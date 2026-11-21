@@ -12,6 +12,7 @@ import {
   resolvePlacement,
   speedForLevel,
   starsFor,
+  surpriseGoldenLevels,
 } from "../games/stack-tower/src/game/stack.ts";
 import { skyPalette, starAlpha } from "../games/stack-tower/src/render/sky.ts";
 
@@ -99,6 +100,21 @@ describe("golden block", () => {
   it("makes every fifth block golden and never the base", () => {
     const golden = [0, 1, 4, 5, 6, 9, 10, 15].filter(isGoldenLevel);
     expect(golden).toEqual([5, 10, 15]);
+  });
+
+  it("picks seeded surprise golden blocks in each 5-block window and varies across seeds", () => {
+    const a = surpriseGoldenLevels(11);
+    const b = surpriseGoldenLevels(97);
+    expect(a.size).toBe(3);
+    for (const lvl of a) {
+      expect(lvl).toBeGreaterThanOrEqual(2);
+      expect(lvl).toBeLessThan(CONFIG.levelsToWin);
+      expect(isGoldenLevel(lvl)).toBe(false);
+    }
+    expect([...a]).not.toEqual([...b]);
+    const seeded = new StackGame(11);
+    expect(seeded.isGolden(5)).toBe(true);
+    expect([...a].every((lvl) => seeded.isGolden(lvl))).toBe(true);
   });
 
   it("multiplies the points of the golden block only", () => {

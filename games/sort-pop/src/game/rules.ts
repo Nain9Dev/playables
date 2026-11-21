@@ -118,6 +118,8 @@ export interface PourResult {
   combo: number;
   completedTotal: number;
   movesLeft: number;
+  /** True once per round when the halfway tube is completed (scheduled pattern interrupt). */
+  milestone: boolean;
   outcome: Outcome;
 }
 
@@ -138,6 +140,7 @@ export class SortGame {
   combo = 0;
   outcome: Outcome = "playing";
   readonly colors: number;
+  private milestoneDone = false;
 
   /** `extraTubes` adds empty tubes and `extraMoves` adds moves: the bonus of a retry. */
   constructor(level: Level, extraTubes = 0, extraMoves = 0) {
@@ -168,6 +171,12 @@ export class SortGame {
     this.movesLeft -= 1;
     this.movesMade += 1;
     this.combo = result.completed ? this.combo + 1 : 0;
+    const done = this.completed;
+    let milestone = false;
+    if (!isSolved(this.tubes) && !this.milestoneDone && this.colors >= 3 && done >= Math.ceil(this.colors / 2)) {
+      this.milestoneDone = true;
+      milestone = true;
+    }
     if (isSolved(this.tubes)) this.outcome = "won";
     else if (this.movesLeft <= 0 || legalMoves(this.tubes).length === 0) this.outcome = "lost";
     return {
@@ -177,8 +186,9 @@ export class SortGame {
       count: result.count,
       completed: result.completed,
       combo: this.combo,
-      completedTotal: this.completed,
+      completedTotal: done,
       movesLeft: this.movesLeft,
+      milestone,
       outcome: this.outcome,
     };
   }

@@ -115,6 +115,23 @@ describe("SortGame", () => {
     expect(game.outcome).toBe("won");
   });
 
+  it("triggers a one-time halfway milestone when half the colors are sorted", () => {
+    const halfLevel: Level = {
+      seed: 0,
+      colors: 4,
+      tubes: [[0, 0, 0, 0], [1, 1, 1], [2, 1], [2, 2, 2], [3, 3], [3, 3]],
+      solution: [],
+      moves: 5,
+    };
+    const game = new SortGame(halfLevel);
+    // First pour moves top 1 from tube 2 onto tube 1 -> 2 of 4 sorted = halfway milestone.
+    const first = game.pour(2, 1);
+    expect(first).toMatchObject({ completed: true, completedTotal: 2, milestone: true, movesLeft: 4, outcome: "playing" });
+    // Next completion moves 2 from tube 2 onto tube 3 -> milestone does not fire again.
+    const second = game.pour(2, 3);
+    expect(second).toMatchObject({ completed: true, completedTotal: 3, milestone: false, movesLeft: 3, outcome: "playing" });
+  });
+
   it("ignores an illegal pour and does not spend a move", () => {
     const game = new SortGame(level([[0, 1], [1, 0]], 3));
     expect(game.pour(0, 1)).toBeNull();
