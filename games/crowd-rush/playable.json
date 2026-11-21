@@ -47,6 +47,7 @@
     { "name": "gate", "meaning": "A gate was passed. Carries row, operation, value, and the crowd before and after." },
     { "name": "bad_gate", "meaning": "The player took a subtract or divide gate." },
     { "name": "idle_nudge", "meaning": "Nobody steered for 2.5 seconds and the finger sped up." },
+    { "name": "milestone", "meaning": "The halfway row was passed, and the rhythm break played." },
     { "name": "boss_start", "meaning": "The final fight began. Carries the crowd and the enemy size." },
     { "name": "fail", "meaning": "The run was lost. Carries the reason, the crowd or the boss." },
     { "name": "retry", "meaning": "The player used the second chance and took the bonus crowd." },
@@ -54,6 +55,20 @@
     { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, crowd and enemy." },
     { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }
   ],
+  "scorecard": {
+    "instant-motion": { "status": "yes", "note": "The crowd is already running when the ad appears, and the road scrolls." },
+    "text-hook": { "status": "yes", "note": "The caption Pick the bigger number shows at the start and slides away after the first steer." },
+    "one-control": { "status": "yes", "note": "Drag to steer, or move the mouse. A sliding finger shows it." },
+    "first-reward": { "status": "yes", "note": "Both gates in the first row are good, so the first choice always grows the crowd." },
+    "pattern-interrupt": { "status": "yes", "note": "A HALFWAY burst with a field-of-view kick and a chord, then a BOSS AHEAD warning before the fight." },
+    "variable-reward": { "status": "partial", "note": "Gains vary by gate and big gains get a kick and an arpeggio, but there are no random drops or streaks." },
+    "open-loop": { "status": "yes", "note": "A progress bar fills toward the boss, and the boss crowd is visible at the end of the road." },
+    "near-miss": { "status": "partial", "note": "A loss shows the crowd against the enemy, but there is no almost-won moment during the fight." },
+    "instant-retry": { "status": "yes", "note": "The first failure offers TRY AGAIN with 12 extra crowd members." },
+    "sound-haptics": { "status": "yes", "note": "A note for each gate, a rising arpeggio for big gains, hit sounds in the fight and vibrations. Audio starts after the first input." },
+    "cliffhanger-end": { "status": "yes", "note": "Animated stars and a survivor count, then a teaser about a bigger boss in Level 2 and a PLAY LEVEL 2 button. Level 2 is a teaser: the button goes to the store link." },
+    "measured": { "status": "yes", "note": "Events include first_input, gate, bad_gate, milestone and boss_start, all listed on this page." }
+  },
   "stack": ["TypeScript", "Three.js", "InstancedMesh", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
   "source": "https://github.com/Nain9Dev/playables/tree/main/games/crowd-rush",
   "accent": "#2f7bff"

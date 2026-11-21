@@ -117,7 +117,8 @@ export class RunView {
     this.scene.add(this.player, this.enemy);
 
     this.resize();
-    window.addEventListener("resize", () => this.resize());
+    // A ResizeObserver also catches the canvas changing size inside an iframe or a phone frame.
+    new ResizeObserver(() => this.resize()).observe(canvas);
   }
 
   /** Build the road, rails, gates and boss platform for a level. */

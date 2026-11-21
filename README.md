@@ -1,13 +1,13 @@
 # Playables
 
 [![CI](https://github.com/Nain9Dev/playables/actions/workflows/ci.yml/badge.svg)](https://github.com/Nain9Dev/playables/actions/workflows/ci.yml)
-[![Play](https://img.shields.io/badge/Play-live%20portfolio-0047AB?style=flat-square)](https://www.naindev.com/playables/)
+[![Play](https://img.shields.io/badge/Play-playables.naindev.com-0047AB?style=flat-square)](https://playables.naindev.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational)](LICENSE)
 
 A portfolio of **single-file HTML5 playable ads** built with Three.js. Each one is tuned for the first five seconds, instrumented for retention, and **verified against ad-network specs before it ships**. The build fails if a playable breaks a rule, so the site only ever publishes files that pass.
 
-**Portfolio: https://www.naindev.com/playables/**
+**Portfolio: https://playables.naindev.com/**
 
 ## What is in here
 
@@ -24,7 +24,8 @@ A portfolio of **single-file HTML5 playable ads** built with Three.js. Each one 
 | Playable | Mechanic | Size | Spec |
 | :--- | :--- | :--- | :--- |
 | [Stack Tower](games/stack-tower) | Timing. Tap to drop a swinging block, the overhang is cut off | about 537 KB | 7 of 7 rules |
-| [Crowd Rush](games/crowd-rush) | Gate runner. Steer through math gates to grow a crowd, then beat a boss crowd | about 542 KB | 7 of 7 rules |
+| [Crowd Rush](games/crowd-rush) | Gate runner. Steer through math gates to grow a crowd, then beat a boss crowd | about 543 KB | 7 of 7 rules |
+| [Merge Pop](games/merge-pop) | Puzzle. Swipe to merge tiles and reach 128 in 24 moves | about 540 KB | 7 of 7 rules |
 
 Each playable has its own breakdown page with the hook, the core loop, a table of retention levers, a live telemetry panel and the real spec verdict.
 
@@ -44,6 +45,12 @@ Each playable has its own breakdown page with the hook, the core loop, a table o
 | Complete HTML document | error |
 
 On the first build it caught a real bug: Vite injects a module-preload polyfill that calls `fetch()`. `build.modulePreload: false` fixed it.
+
+## Retention scorecard
+
+Every playable scores itself on twelve principles taken from short-video feeds (`site/principles.ts`): motion from the first frame, a text hook, one control, an early reward, rhythm changes, variable rewards, a visible goal, near-win tension, retry without friction, sound and haptics, an end that pulls forward, and measurement. Each score is `yes`, `partial` or `no`, with a note that says where it lives in the game. The site build refuses a playable that skips a principle, and the home page shows all playables side by side, so a partial score stays visible until it is fixed.
+
+The scorecard already paid off: it showed that all three playables had a weak ending, and each now has a Level 2 teaser on the end card.
 
 ## Retention and telemetry
 

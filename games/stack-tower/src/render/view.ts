@@ -76,7 +76,8 @@ export class StackView {
 
     this.ringGeometry.rotateX(-Math.PI / 2);
     this.resize();
-    window.addEventListener("resize", () => this.resize());
+    // A ResizeObserver also catches the canvas changing size inside an iframe or a phone frame.
+    new ResizeObserver(() => this.resize()).observe(canvas);
   }
 
   private colorFor(level: number): Color {

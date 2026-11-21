@@ -90,6 +90,8 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
 .btn-ghost { border-color: var(--nain-blue); color: var(--nain-blue); background: transparent; }
 [data-theme="dark"] .btn-ghost { border-color: var(--nain-cyan); color: var(--nain-cyan); }
 .btn-ghost:hover { box-shadow: var(--nain-shadow-btn-alt-hover); }
+.surface-deep .btn-ghost { border-color: var(--nain-green); color: var(--nain-green); }
+.surface-deep .btn-ghost:hover { box-shadow: 6px 6px 0 var(--nain-green); }
 .btn:focus-visible, .phone-play:focus-visible, .phone-full:focus-visible { outline: 3px solid var(--nain-focus-ring); outline-offset: 3px; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--nain-s4); margin-top: var(--nain-s6); }
 
@@ -206,6 +208,22 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
 
 /* Fullscreen overlay used when the browser has no Fullscreen API (iOS Safari). */
 .fs-overlay { position: fixed; inset: 0; z-index: 9999; background: #000; }
+/* Retention scorecard */
+.sub { display: block; font-weight: 400; font-size: 13px; line-height: 1.4; color: var(--nain-text-secondary); margin-top: 2px; }
+.table-score th[scope="row"], .table-matrix th[scope="row"] { min-width: 220px; font-weight: 700; }
+.table-score td:nth-child(2), .table-matrix td { white-space: nowrap; text-align: center; }
+.table-matrix thead th { text-align: center; }
+.table-matrix thead th:first-child { text-align: left; }
+.table-matrix thead a { text-decoration: none; border-bottom: 1px solid currentColor; }
+.table-matrix tr.total th, .table-matrix tr.total td { background: var(--nain-surface-sunken); font-size: 18px; }
+[data-theme="dark"] .table-matrix tr.total th, [data-theme="dark"] .table-matrix tr.total td { background: var(--nain-dark-bg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .table-matrix tr.total th, :root:not([data-theme="light"]) .table-matrix tr.total td { background: var(--nain-dark-bg); } }
+.table-matrix tr.total .sub { font-size: 12px; }
+.score { display: inline-block; font-family: var(--nain-font-mono); font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: var(--nain-cap); }
+.score.yes { background: var(--nain-green); color: var(--nain-blue-deep); }
+.score.partial { background: #ffd24d; color: var(--nain-brand-black); }
+.score.no { background: var(--nain-red); color: #fff; }
+
 .fs-overlay iframe { width: 100%; height: 100%; border: 0; }
 .fs-close {
   position: absolute; top: 12px; left: 12px; z-index: 2; font: inherit; font-weight: 700; cursor: pointer;
