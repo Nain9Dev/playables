@@ -23,9 +23,11 @@ A portfolio of **single-file HTML5 playable ads** built with Three.js. Each one 
 
 | Playable | Mechanic | Size | Spec |
 | :--- | :--- | :--- | :--- |
-| [Stack Tower](games/stack-tower) | Timing. Tap to drop a swinging block, the overhang is cut off | about 537 KB | 7 of 7 rules |
-| [Crowd Rush](games/crowd-rush) | Gate runner. Steer through math gates to grow a crowd, then beat a boss crowd | about 543 KB | 7 of 7 rules |
-| [Merge Pop](games/merge-pop) | Puzzle. Swipe to merge tiles and reach 128 in 24 moves | about 540 KB | 7 of 7 rules |
+| [Stack Tower](games/stack-tower) | Timing. Tap to drop a swinging block, the overhang is cut off | about 559 KB | 7 of 7 rules |
+| [Crowd Rush](games/crowd-rush) | Gate runner. Steer through math gates to grow a crowd, then beat a boss crowd | about 607 KB | 7 of 7 rules |
+| [Merge Pop](games/merge-pop) | Puzzle. Swipe to merge tiles and reach 128 in 24 moves | about 559 KB | 7 of 7 rules |
+| [Sort Pop](games/sort-pop) | Ball sort. Tap tubes to pour matching colors into 5 full tubes in 13 moves | about 557 KB | 7 of 7 rules |
+| [Paint Roll](games/paint-roll) | Colour fill. Swipe to roll a paint ball through a 3D maze and paint every tile | about 563 KB | 7 of 7 rules |
 
 Each playable has its own breakdown page with the hook, the core loop, a table of retention levers, a live telemetry panel and the real spec verdict.
 
@@ -50,7 +52,7 @@ On the first build it caught a real bug: Vite injects a module-preload polyfill 
 
 Every playable scores itself on twelve principles taken from short-video feeds (`site/principles.ts`): motion from the first frame, a text hook, one control, an early reward, rhythm changes, variable rewards, a visible goal, near-win tension, retry without friction, sound and haptics, an end that pulls forward, and measurement. Each score is `yes`, `partial` or `no`, with a note that says where it lives in the game. The site build refuses a playable that skips a principle, and the home page shows all playables side by side, so a partial score stays visible until it is fixed.
 
-The scorecard already paid off: it showed that all three playables had a weak ending, and each now has a Level 2 teaser on the end card.
+The scorecard already paid off: it showed that the initial playables had a weak ending, and every playable now has a Level 2 teaser on the end card.
 
 ## Retention and telemetry
 
