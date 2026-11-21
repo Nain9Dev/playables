@@ -10,10 +10,40 @@
   html, body { width: 100%; height: 100%; overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
   body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(180deg, hsl(200, 70%, 80%), hsl(235, 65%, 62%));
-    transition: background 0.8s ease;
+    background: linear-gradient(180deg, rgb(96, 190, 255), rgb(214, 240, 255));
   }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #sky { z-index: 0; }
+  #stage { z-index: 1; }
+  #progress, #score, #toast, #caption, #pops, #hint, #install, #combo, #motion, #flash { z-index: 5; }
+  #end { z-index: 10; }
+
+  #combo {
+    position: fixed; left: 14px; top: 34%; display: flex; flex-direction: column-reverse; align-items: center; gap: 5px;
+    pointer-events: none; opacity: 0; transition: opacity 0.25s;
+  }
+  #combo.on { opacity: 1; }
+  #combo-label { color: #fff; font-weight: 900; font-size: 22px; text-shadow: var(--shadow); margin-top: 4px; }
+  #combo-label.bump { animation: combo-bump 0.25s ease-out; }
+  @keyframes combo-bump { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+  #combo i { display: block; width: 14px; height: 14px; border-radius: 4px; background: rgba(255, 255, 255, 0.28); transition: background 0.15s, box-shadow 0.15s; }
+  #combo i.lit { background: #ffe14d; box-shadow: 0 0 10px 2px rgba(255, 225, 77, 0.85); }
+  #combo.hot i.lit { background: #ff8a3d; box-shadow: 0 0 12px 3px rgba(255, 138, 61, 0.9); }
+  #combo.fire i.lit { background: #ff4d6d; box-shadow: 0 0 14px 4px rgba(255, 77, 109, 0.95); }
+
+  #motion {
+    position: fixed; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); appearance: none; border: 0; cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 700; color: #fff; background: rgba(20, 30, 70, 0.38);
+    padding: 7px 12px; border-radius: 999px;
+  }
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle, rgba(255, 225, 77, 0.55), rgba(255, 225, 77, 0) 70%); }
+  #flash.go { animation: flash 0.55s ease-out; }
+  @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+  .reduced #flash.go { animation: none; }
+  .reduced #score.bump { transform: none; }
+  .reduced #combo-label.bump { animation: none; }
+  .reduced #hint { animation: none; }
+  #toast.close { color: #7dffe0; }
 
   #progress {
     position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 16px; right: 112px; height: 10px;
@@ -106,7 +136,11 @@
 </style>
 </head>
 <body>
+<canvas id="sky" aria-hidden="true"></canvas>
 <canvas id="stage" aria-label="Stack Tower playable ad"></canvas>
+<div id="flash" aria-hidden="true"></div>
+<div id="combo" aria-hidden="true"><span id="combo-label">x0</span><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<button id="motion" type="button" aria-pressed="false">Motion: on</button>
 <div id="progress" aria-hidden="true"><div id="fill"></div></div>
 <div id="score" aria-live="polite">0</div>
 <div id="caption">Can you stack <b>14</b>?</div>
