@@ -1,5 +1,5 @@
 import { onViewableChange, openStore, whenAdReady } from "../../../kit/sdk.ts";
-import { haptic, note, tone, unlockAudio } from "../../../kit/audio.ts";
+import { haptic, note, pauseAudio, resumeAudio, tone, unlockAudio } from "../../../kit/audio.ts";
 import { track } from "../../../kit/telemetry.ts";
 import {
   CTA_URL,
@@ -389,6 +389,8 @@ function setPaused(value: boolean): void {
   paused = value;
   lastFrame = performance.now();
   music.setPaused(value);
+  if (value) pauseAudio();
+  else if (hasMoved) resumeAudio();
 }
 
 function openFrom(origin: "top" | "end_card"): void {

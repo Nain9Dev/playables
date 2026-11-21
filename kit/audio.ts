@@ -4,6 +4,7 @@
  * muted until the player interacts.
  */
 let context: AudioContext | null = null;
+let muted = false;
 
 export function unlockAudio(): void {
   if (!context) {
@@ -13,7 +14,24 @@ export function unlockAudio(): void {
     if (!Ctor) return;
     context = new Ctor();
   }
-  void context.resume();
+  if (!muted) void context.resume();
+}
+
+/** Suspend the shared audio context when the ad is hidden or not viewable. */
+export function pauseAudio(): void {
+  if (context && context.state === "running") void context.suspend();
+}
+
+/** Resume the shared audio context if it was already unlocked and is not muted. */
+export function resumeAudio(): void {
+  if (context && !muted && context.state === "suspended") void context.resume();
+}
+
+/** Mute or unmute synthesized sound effects without creating an audio context early. */
+export function setAudioMuted(value: boolean): void {
+  muted = value;
+  if (value) pauseAudio();
+  else resumeAudio();
 }
 
 export function tone(
@@ -23,7 +41,7 @@ export function tone(
   volume = 0.16,
   delay = 0,
 ): void {
-  if (!context || context.state !== "running") return;
+  if (muted || !context || context.state !== "running") return;
   const start = context.currentTime + delay;
   const oscillator = context.createOscillator();
   const gain = context.createGain();

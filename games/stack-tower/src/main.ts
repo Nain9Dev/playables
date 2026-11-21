@@ -1,5 +1,5 @@
 import { onViewableChange, openStore, whenAdReady } from "../../../kit/sdk.ts";
-import { haptic, note, tone, unlockAudio } from "../../../kit/audio.ts";
+import { haptic, note, pauseAudio, resumeAudio, tone, unlockAudio } from "../../../kit/audio.ts";
 import { track } from "../../../kit/telemetry.ts";
 import {
   CTA_URL,
@@ -239,6 +239,7 @@ function handleDrop(): void {
       );
     }
     cutThud();
+    if (!result.nearMiss && !result.golden) haptic(8);
   }
 
   if (result.kind === "perfect") {
@@ -347,6 +348,8 @@ function frame(now: number): void {
 function setPaused(value: boolean): void {
   paused = value;
   music.setPaused(value);
+  if (value) pauseAudio();
+  else if (hasTapped) resumeAudio();
   lastFrame = performance.now();
 }
 

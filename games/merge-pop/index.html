@@ -23,12 +23,12 @@
   #caption b { color: #ffe14d; }
 
   #progress {
-    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 112px; height: 10px;
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 18px); left: 16px; right: 122px; height: 10px;
     background: rgba(255, 255, 255, 0.28); border-radius: 999px; overflow: hidden; pointer-events: none;
   }
   #fill { width: 100%; height: 100%; background: #ffe14d; border-radius: 999px; transform-origin: left; transform: scaleX(0); transition: transform 0.3s ease-out; }
 
-  #marks { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 26px); left: 16px; right: 112px; height: 16px; pointer-events: none; }
+  #marks { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 32px); left: 16px; right: 122px; height: 16px; pointer-events: none; }
   #marks span { position: absolute; top: 0; transform: translateX(-50%); font-size: 12px; font-weight: 900; color: #fff; text-shadow: var(--shadow); opacity: 0.85; }
   #marks span::before { content: ""; position: absolute; left: 50%; top: -17px; width: 2px; height: 10px; background: rgba(255, 255, 255, 0.85); transform: translateX(-50%); }
   #marks .m128 { right: 2px; left: auto; transform: none; color: #ffe14d; }
@@ -110,7 +110,7 @@
     background: #ffe14d; border-radius: 999px; box-shadow: 0 4px 0 #d6a800, 0 8px 18px rgba(10, 14, 50, 0.35);
   }
   .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #d6a800; }
-  #install { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 2px); right: 14px; padding: 9px 18px; font-size: 15px; z-index: 5; }
+  #install { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 4px); right: 14px; min-width: 44px; min-height: 44px; padding: 11px 18px; font-size: 15px; z-index: 5; }
 
   #end {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
@@ -138,8 +138,27 @@
     appearance: none; cursor: pointer; font: inherit; font-weight: 800; font-size: 17px; color: var(--ink);
     background: transparent; border: 3px solid var(--ink); border-radius: 999px; width: 100%; padding: 12px; margin-top: 12px;
   }
-  .card .again { appearance: none; border: 0; background: none; color: #4a5aa8; font: inherit; font-size: 15px; margin-top: 14px; cursor: pointer; text-decoration: underline; }
+  .card .again { appearance: none; border: 0; background: none; color: #4a5aa8; font: inherit; font-size: 15px; min-height: 44px; padding: 10px 16px; margin-top: 6px; cursor: pointer; text-decoration: underline; }
   .hidden { display: none !important; }
+  @media (max-height: 500px) {
+    #caption { top: calc(env(safe-area-inset-top, 0px) + 34px); font-size: 20px; }
+    #toast { top: calc(env(safe-area-inset-top, 0px) + 60px); font-size: 20px; }
+    #stats { bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); gap: 10px; }
+    .chip { min-width: 84px; padding: 4px 12px; border-radius: 12px; }
+    .chip small { font-size: 10px; }
+    .chip b { font-size: 20px; }
+    #streak { bottom: calc(env(safe-area-inset-bottom, 0px) + 58px); padding: 3px 10px; }
+    #booster { bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); left: auto; right: 14px; transform: none; padding: 10px 14px; font-size: 13px; animation: none; }
+    #hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); font-size: 16px; }
+    #hint .track { height: 32px; margin-top: 4px; }
+    #hint .finger { width: 30px; height: 30px; }
+    .card { padding: 14px 18px; max-height: 92vh; overflow-y: auto; }
+    .card h1 { font-size: 24px; margin-bottom: 4px; }
+    #stars { font-size: 28px; min-height: 32px; }
+    .card p { font-size: 14px; margin-bottom: 10px; }
+    .card .cta { padding: 12px; font-size: 17px; }
+    .card .retry { padding: 10px; font-size: 15px; margin-top: 8px; }
+  }
 </style>
 </head>
 <body>
