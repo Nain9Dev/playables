@@ -54,7 +54,50 @@ export const CONFIG = {
   /** Consecutive perfect drops needed before the block grows back. */
   regrowCombo: 3,
   regrowAmount: 0.15,
+  /** Every Nth block is golden (variable reward): its points are multiplied. */
+  goldenEvery: 5,
+  goldenMultiplier: 3,
+  /** A cut whose overhang is at most this wide counts as a near miss (SO CLOSE). */
+  nearMissMax: 0.35,
+  /** Combo needed for each music/glow tier. Tier 0 is below the first value. */
+  comboTiers: [2, 4, 6],
 } as const;
+
+/** True when the block placed at `level` (1 = first block on the base) is golden. */
+export function isGoldenLevel(level: number): boolean {
+  return level > 0 && level % CONFIG.goldenEvery === 0;
+}
+
+/** A cut with a thin overhang: the player was almost perfect. */
+export function isNearMiss(placement: Placement): boolean {
+  return (
+    placement.kind === "cut" &&
+    placement.debris !== null &&
+    placement.debris.size <= CONFIG.nearMissMax
+  );
+}
+
+/** Intensity tier 0..3 for the music, trail and glow, driven by the combo. */
+export function comboTier(combo: number): 0 | 1 | 2 | 3 {
+  const [one, two, three] = CONFIG.comboTiers;
+  if (combo >= three) return 3;
+  if (combo >= two) return 2;
+  if (combo >= one) return 1;
+  return 0;
+}
+
+/**
+ * How far the sky has moved from day to space, 0..1. It follows the tower height,
+ * so the background tells the player they are climbing.
+ */
+export function skyProgress(level: number): number {
+  return Math.min(1, Math.max(0, level / CONFIG.levelsToWin));
+}
+
+/** Camera view-height multiplier: the camera pulls out a little as the tower grows. */
+export function cameraPullOut(level: number): number {
+  return 1 + 0.22 * skyProgress(level);
+}
 
 /**
  * Compare the dropped span with the span below it.
@@ -93,15 +136,25 @@ export function axisForLevel(level: number): Axis {
   return level % 2 === 1 ? "x" : "z";
 }
 
-/** Swing speed in radians per second. It grows slowly so the early blocks are easy. */
+/**
+ * Swing speed in radians per second: 1.9 at the start, +0.12 per block, capped at
+ * level 20. Early blocks stay easy, the last blocks need a real eye. Picked with a
+ * simulated player (see playable.json "tuning"), not with real player data.
+ */
 export function speedForLevel(level: number): number {
-  return 1.9 + Math.min(level, 20) * 0.07;
+  return 1.9 + Math.min(level, 20) * 0.12;
 }
 
 export interface DropResult extends Placement {
   /** Index of the new block in `blocks`. Null on a miss. */
   index: number | null;
   axis: Axis;
+  /** Points awarded by this drop, after the golden multiplier. Zero on a miss. */
+  points: number;
+  /** The placed block was golden. */
+  golden: boolean;
+  /** The drop was a cut with a thin overhang. */
+  nearMiss: boolean;
 }
 
 export class StackGame {
@@ -164,20 +217,24 @@ export class StackGame {
     if (placement.kind === "miss" || !placement.placed) {
       this.over = true;
       this.combo = 0;
-      return { ...placement, index: null, axis };
+      return { ...placement, index: null, axis, points: 0, golden: false, nearMiss: false };
     }
 
+    const golden = isGoldenLevel(this.level + 1);
+    let points: number;
     let placed = placement.placed;
     if (placement.kind === "perfect") {
       this.combo += 1;
-      this.score += 1 + Math.min(this.combo, 5);
+      points = 1 + Math.min(this.combo, 5);
       if (this.combo >= CONFIG.regrowCombo) {
         placed = { ...placed, size: Math.min(CONFIG.baseSize, placed.size + CONFIG.regrowAmount) };
       }
     } else {
       this.combo = 0;
-      this.score += 1;
+      points = 1;
     }
+    if (golden) points *= CONFIG.goldenMultiplier;
+    this.score += points;
 
     this.blocks.push(
       axis === "x"
@@ -190,6 +247,14 @@ export class StackGame {
       this.won = true;
     }
 
-    return { ...placement, placed, index: this.blocks.length - 1, axis };
+    return {
+      ...placement,
+      placed,
+      index: this.blocks.length - 1,
+      axis,
+      points,
+      golden,
+      nearMiss: isNearMiss(placement),
+    };
   }
 }

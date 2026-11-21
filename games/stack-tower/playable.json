@@ -7,8 +7,8 @@
   "genre": "Hyper-casual, timing",
   "duration": "30 to 45 seconds",
   "orientation": "Portrait",
-  "hook": "The game is already running when the ad appears. A block swings across the screen, a pulsing ring and a bouncing finger say where to tap, and the first tap pays off at once with a sound, a squash, a score pop and a color change.",
-  "coreLoop": "A block swings over the tower. Tap to drop it. The overhang is cut off and falls away, so the tower gets narrower with every mistake. A perfect drop snaps into place, keeps the block full size and builds a combo that grows the block back.",
+  "hook": "The game is already running when the ad appears. A block swings across the screen, a pulsing ring and a bouncing finger say where to tap, and the first tap pays off at once with a sound, a squash, a score pop and a color change. The sky behind the tower changes from day to dusk to space as it grows, so progress is visible without reading anything.",
+  "coreLoop": "A block swings over the tower. Tap to drop it. The overhang is cut off and falls away, so the tower gets narrower with every mistake. A perfect drop snaps into place, keeps the block full size and builds a combo that grows the block back. Every fifth block is golden and pays triple. A cut with a very thin overhang slows time and says SO CLOSE.",
   "levers": [
     {
       "name": "First five seconds",
@@ -21,9 +21,29 @@
       "how": "Landing squash, score pop, score bump, synthesized note and a short vibration. A perfect drop adds a ring, sparkles and a camera punch that grows with the combo."
     },
     {
-      "name": "Combo and regrow",
+      "name": "Combo meter and streak glow",
       "why": "A streak makes skill visible and gives a reason to keep going.",
-      "how": "Each perfect drop raises the combo. The notes climb a pentatonic scale, and from the third perfect drop the block grows back toward full size."
+      "how": "Each perfect drop raises the combo. A column of six pips on the left fills up, the notes climb a pentatonic scale, and from the third perfect drop the block grows back toward full size. From a combo of 2 the top blocks glow, and from 4 the moving block leaves a trail of ghosts."
+    },
+    {
+      "name": "Golden block",
+      "why": "A reward that arrives on a known beat gives the player something to aim for. The block is telegraphed, so it works as anticipation as well as a prize.",
+      "how": "Every fifth block is golden and already shows gold while it swings. Its points are multiplied by 3, with extra sparkles, a flash, a chime and a GOLDEN BLOCK x3 message. The schedule is fixed, not random: the variance comes from how well the player lands it."
+    },
+    {
+      "name": "Near miss",
+      "why": "Almost winning is a strong reason to try again, if the game makes the almost visible.",
+      "how": "A cut whose overhang is 0.35 units or less (the perfect window is 0.1) slows time to 30 percent for about half a second, plays a rising sweep and shows SO CLOSE."
+    },
+    {
+      "name": "Scenery that follows the climb",
+      "why": "Visible progress and a changing picture break the sameness of a repeated mechanic.",
+      "how": "The sky blends from day to dusk to space with parallax clouds that fade out and stars that fade in. The camera pulls out by up to 22 percent as the tower grows. Fireworks at the halfway block and at the win. Blocks have lighter tops and edge lines, and the tower stands on a pedestal with a soft shadow."
+    },
+    {
+      "name": "Music that follows the combo",
+      "why": "Sound that reacts to skill rewards the streak without asking the player to look at anything.",
+      "how": "A procedural loop (116 BPM, four chords) starts on the first tap. Pad and bass always play, an arpeggio joins at combo 2, drums at 4 and a bright lead at 6. A cut drops it back to the base layers. No audio data is stored."
     },
     {
       "name": "Goal gradient",
@@ -39,15 +59,33 @@
       "name": "Reward and exit",
       "why": "The end card is where the install happens, so it must feel like a prize.",
       "how": "Stars animate in, the score is shown, a teaser line announces Level 2, and the PLAY LEVEL 2 button is the biggest element on the screen."
+    },
+    {
+      "name": "Reduced motion",
+      "why": "Shake and zoom punches can bother some players, and a playable should not force them.",
+      "how": "The game follows the system reduced-motion setting, and a small toggle at the bottom left switches it on or off. It turns off camera shake, the zoom punch, the streak trail, the screen flash and the pulsing hint."
     }
   ],
+  "tuning": {
+    "swingSpeedRadPerSecond": "1.9 + 0.12 per block, capped at block 20 (was 1.9 + 0.07 per block). That is 2.02 at the first block, 3.58 at block 14.",
+    "swingAmplitude": 2.4,
+    "perfectTolerance": 0.1,
+    "nearMissMaxOverhang": 0.35,
+    "goldenEvery": 5,
+    "goldenMultiplier": 3,
+    "comboTiers": [2, 4, 6],
+    "method": "A simulated player that taps at the center crossing with Gaussian timing error, 4000 runs per setting. With the old curve a player with 40 ms of error won every run and one with 90 ms won 35 percent. With the new curve they win 99.8 and 16 percent. This is a model, not data from real players: the numbers are untested with people and should be checked once real sessions exist."
+  },
   "events": [
     { "name": "impression", "meaning": "The ad is ready and visible, and the game starts." },
     { "name": "first_tap", "meaning": "Milliseconds from start to the first tap. The key hook metric." },
     { "name": "drop", "meaning": "A block was placed. Carries kind (perfect or cut), level and combo." },
     { "name": "streak", "meaning": "A combo of three or more perfect drops." },
+    { "name": "golden", "meaning": "A golden block was placed. Carries level and the points it paid." },
+    { "name": "near_miss", "meaning": "A cut with a very thin overhang. Carries level and the overhang width." },
     { "name": "idle_nudge", "meaning": "Nobody tapped for 2.5 seconds and the hint started to shake." },
     { "name": "milestone", "meaning": "The halfway block was placed, and the rhythm break played." },
+    { "name": "reduced_motion", "meaning": "The player switched the reduced-motion toggle. Carries the new state." },
     { "name": "fail", "meaning": "The block missed the tower. Carries level and score." },
     { "name": "retry", "meaning": "The player used the second chance." },
     { "name": "win", "meaning": "The tower reached 14 blocks." },
@@ -57,16 +95,16 @@
   "scorecard": {
     "instant-motion": { "status": "yes", "note": "The block is already swinging on load, with no title screen." },
     "text-hook": { "status": "yes", "note": "The caption Can you stack 14 shows over the tower and slides away after the first tap." },
-    "one-control": { "status": "yes", "note": "A single tap anywhere. A pulsing marker shows where." },
+    "one-control": { "status": "yes", "note": "A single tap anywhere. A pulsing marker shows where. The only other control is a small reduced-motion toggle." },
     "first-reward": { "status": "yes", "note": "The first drop squashes the block, pops a score and plays a note, even when it is cut." },
-    "pattern-interrupt": { "status": "yes", "note": "At the halfway block a burst, a zoom punch and a chord break the rhythm. The swing also speeds up every block." },
-    "variable-reward": { "status": "yes", "note": "Perfect drops build a combo with rising notes, and from the third one the block grows back." },
-    "open-loop": { "status": "yes", "note": "A progress bar fills toward 14 blocks and the last four blocks get a teaser message." },
-    "near-miss": { "status": "yes", "note": "ALMOST THERE and ONE MORE appear near the goal. A loss at block 8 or higher still earns two stars." },
+    "pattern-interrupt": { "status": "yes", "note": "At the halfway block fireworks, a zoom punch and a chord break the rhythm. The golden block every fifth drop and the sky change add more breaks. The swing also speeds up every block." },
+    "variable-reward": { "status": "partial", "note": "The combo outcome varies with skill and the golden block pays triple, but the golden block follows a fixed schedule, not a random one." },
+    "open-loop": { "status": "yes", "note": "A progress bar fills toward 14 blocks and the last four blocks get a teaser message. The sky moves toward space as a second progress signal." },
+    "near-miss": { "status": "yes", "note": "A thin-overhang cut triggers slow motion and SO CLOSE. ALMOST THERE and ONE MORE appear near the goal. A loss at block 8 or higher still earns two stars." },
     "instant-retry": { "status": "yes", "note": "The first failure offers TRY AGAIN beside the install button." },
-    "sound-haptics": { "status": "yes", "note": "Synthesized notes and short vibrations on every drop, and audio starts only after the first tap." },
+    "sound-haptics": { "status": "yes", "note": "Synthesized notes, short vibrations and a procedural music loop that grows with the combo. Audio starts only after the first tap. Not reviewed on a real phone speaker." },
     "cliffhanger-end": { "status": "yes", "note": "Animated stars, then a teaser line about Level 2 and a PLAY LEVEL 2 button. Level 2 is a teaser: the button goes to the store link." },
-    "measured": { "status": "yes", "note": "Events include first_tap, streak, milestone and cta_click, all listed on this page." }
+    "measured": { "status": "yes", "note": "Events include first_tap, streak, golden, near_miss, milestone and cta_click, all listed on this page. No real-player data has been collected yet." }
   },
   "stack": ["TypeScript", "Three.js", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
   "source": "https://github.com/Nain9Dev/playables/tree/main/games/stack-tower",

@@ -8,8 +8,20 @@ import {
   MAX_ACTIVE_SECONDS,
   RETRIES,
 } from "./config.ts";
-import { CONFIG, StackGame, nearGoalMessage, speedForLevel, starsFor } from "./game/stack.ts";
-import { StackView, hueForLevel } from "./render/view.ts";
+import {
+  CONFIG,
+  StackGame,
+  cameraPullOut,
+  comboTier,
+  isGoldenLevel,
+  nearGoalMessage,
+  skyProgress,
+  speedForLevel,
+  starsFor,
+} from "./game/stack.ts";
+import { createMusic } from "./music.ts";
+import { SkyView } from "./render/sky.ts";
+import { StackView } from "./render/view.ts";
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -32,8 +44,21 @@ const teaser = element("teaser");
 const retryButton = element("retry");
 const againButton = element("again");
 
+const comboBox = element("combo");
+const comboLabel = element("combo-label");
+const flash = element("flash");
+const motionButton = element<HTMLButtonElement>("motion");
+
+const sky = new SkyView(element<HTMLCanvasElement>("sky"));
 const view = new StackView(canvas);
+const music = createMusic();
 let game = new StackGame();
+let skyShown = 0;
+let clock = 0;
+/** Time scale for slow motion after a near miss. 1 is normal speed. */
+let timeScale = 1;
+let slowLeft = 0;
+let reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 let phase = 0;
 let activeSeconds = 0;
 let idleSeconds = 0;
@@ -57,14 +82,44 @@ const missThud = (): void => tone(110, 0.35, "sawtooth", 0.12);
 const winFanfare = (): void =>
   [0, 4, 7, 12].forEach((step, i) => tone(note(step), 0.25, "sine", 0.18, i * 0.09));
 
-function setBackground(level: number): void {
-  const hue = Math.round(hueForLevel(level) * 360);
-  document.body.style.background = `linear-gradient(180deg, hsl(${hue}, 70%, 80%), hsl(${(hue + 40) % 360}, 65%, 62%))`;
+const goldenChime = (): void =>
+  [0, 4, 7, 12, 16].forEach((step, i) => tone(note(step + 12), 0.28, "sine", 0.14, i * 0.05));
+/** A rising sweep: the rush of a drop that almost landed perfectly. */
+function nearMissSweep(): void {
+  [0, 3, 5, 7, 10].forEach((step, i) => tone(note(step - 5), 0.14, "triangle", 0.1, i * 0.045));
 }
 
-function showToast(text: string, gold = false): void {
+function applyMotion(): void {
+  document.body.classList.toggle("reduced", reducedMotion);
+  view.setReducedMotion(reducedMotion);
+  motionButton.textContent = reducedMotion ? "Motion: reduced" : "Motion: on";
+  motionButton.setAttribute("aria-pressed", String(reducedMotion));
+}
+
+function updateCombo(): void {
+  const tier = comboTier(game.combo);
+  comboBox.classList.toggle("on", game.combo >= 2);
+  comboBox.classList.toggle("hot", tier >= 2);
+  comboBox.classList.toggle("fire", tier >= 3);
+  comboLabel.textContent = `x${game.combo}`;
+  comboLabel.classList.remove("bump");
+  void comboLabel.offsetWidth;
+  comboLabel.classList.add("bump");
+  [...comboBox.querySelectorAll("i")].forEach((pip, i) => pip.classList.toggle("lit", i < game.combo));
+  view.setGlow(tier);
+  music.setIntensity(tier);
+}
+
+function flashGold(): void {
+  flash.classList.remove("go");
+  void flash.offsetWidth;
+  flash.classList.add("go");
+}
+
+function showToast(text: string, gold = false, close = false): void {
   toast.textContent = text;
   toast.classList.toggle("gold", gold);
+  toast.classList.toggle("close", close);
   toast.classList.remove("show");
   // Reading offsetWidth restarts the CSS animation.
   void toast.offsetWidth;
@@ -97,12 +152,17 @@ function startRound(): void {
   ended = false;
   view.reset();
   view.addBlock(game.top, 0);
-  view.setMoving(game.movingBlock(game.movingCenter(0)), 1);
+  view.setMoving(game.movingBlock(game.movingCenter(0)), 1, isGoldenLevel(1));
   scoreText.textContent = "0";
   hint.classList.toggle("hidden", hasTapped);
   endCard.classList.remove("show");
+  timeScale = 1;
+  slowLeft = 0;
+  skyShown = 0;
+  comboBox.classList.remove("on", "hot", "fire");
+  music.setIntensity(0);
+  view.setPullOut(1);
   setProgress();
-  setBackground(0);
 }
 
 function renderStars(count: number): void {
@@ -138,6 +198,7 @@ function showEndCard(outcome: "win" | "fail" | "time"): void {
 function handleDrop(): void {
   if (paused || game.over || ended) return;
   unlockAudio();
+  music.start();
   hint.classList.add("hidden");
   if (!hasTapped) {
     hasTapped = true;
@@ -146,7 +207,6 @@ function handleDrop(): void {
   }
   idleSeconds = 0;
 
-  const before = game.score;
   const center = game.movingCenter(phase);
   const result = game.drop(center);
   const top = game.top;
@@ -156,13 +216,16 @@ function handleDrop(): void {
     view.kick();
     missThud();
     haptic(40);
+    music.setIntensity(0);
+    view.setGlow(0);
+    comboBox.classList.remove("on", "hot", "fire");
     track("fail", { level: game.level, score: game.score });
     showEndCard("fail");
     return;
   }
 
   view.setMoving(null, 0);
-  view.addBlock(top, game.level);
+  view.addBlock(top, game.level, result.golden);
 
   if (result.debris) {
     const previous = game.blocks[game.level - 1];
@@ -172,13 +235,14 @@ function handleDrop(): void {
           ? { x: result.debris.center, z: previous.z, w: result.debris.size, d: previous.d }
           : { x: previous.x, z: result.debris.center, w: previous.w, d: result.debris.size },
         game.level,
+        result.golden,
       );
     }
     cutThud();
   }
 
   if (result.kind === "perfect") {
-    view.pulse(top, game.level);
+    view.pulse(top, game.level, result.golden ? 0xffd34d : 0xffffff);
     view.sparkle(top, game.level, 10 + Math.min(game.combo, 6) * 3);
     view.punch(0.03 + Math.min(game.combo, 6) * 0.01);
     perfectChime(game.combo);
@@ -187,15 +251,38 @@ function handleDrop(): void {
     if (game.combo >= 3) track("streak", { combo: game.combo });
   }
 
+  if (result.nearMiss) {
+    // Slow motion makes the player see how close it was, and wish for one more try.
+    slowLeft = 0.55;
+    nearMissSweep();
+    showToast("SO CLOSE!", false, true);
+    haptic(20);
+    track("near_miss", { level: game.level, overhang: Number((result.debris?.size ?? 0).toFixed(2)) });
+  }
+
+  if (result.golden) {
+    // Variable reward: the golden block pays triple and gets its own burst.
+    view.sparkle(top, game.level, 34, true);
+    view.punch(0.07);
+    goldenChime();
+    flashGold();
+    haptic(30);
+    showToast(`GOLDEN BLOCK x${CONFIG.goldenMultiplier}`, true);
+    track("golden", { level: game.level, points: result.points });
+  }
+
   track("drop", { kind: result.kind, level: game.level, combo: game.combo });
-  showPop(`+${game.score - before}`, result.kind === "perfect" && game.combo >= 3);
+  showPop(`+${result.points}`, result.golden || (result.kind === "perfect" && game.combo >= 3));
   bumpScore();
   scoreText.textContent = String(game.score);
-  setBackground(game.level);
+  updateCombo();
+  view.setPullOut(cameraPullOut(game.level));
   setProgress();
 
   if (game.won) {
     view.confetti(top, game.level);
+    view.fireworks(top, game.level);
+    music.setIntensity(3);
     winFanfare();
     haptic(60);
     track("win", { score: game.score });
@@ -207,6 +294,7 @@ function handleDrop(): void {
   if (game.level === Math.floor(CONFIG.levelsToWin / 2)) {
     showToast("HALFWAY!", true);
     view.sparkle(top, game.level, 30);
+    view.fireworks(top, game.level);
     view.punch(0.09);
     [0, 4, 7].forEach((step, i) => tone(note(step), 0.25, "sine", 0.14, i * 0.06));
     track("milestone", { name: "halfway", level: game.level });
@@ -216,12 +304,23 @@ function handleDrop(): void {
   if (tease && result.kind !== "perfect") showToast(tease, true);
 
   phase = 0;
-  view.setMoving(game.movingBlock(game.movingCenter(0)), game.level + 1);
+  // The next block already shows gold while it swings, so the player aims for it.
+  view.setMoving(game.movingBlock(game.movingCenter(0)), game.level + 1, isGoldenLevel(game.level + 1));
 }
 
 function frame(now: number): void {
-  const dt = Math.min(0.05, (now - lastFrame) / 1000 || 0);
+  const realDt = Math.min(0.05, (now - lastFrame) / 1000 || 0);
   lastFrame = now;
+
+  // Slow motion holds at 30% speed, then eases back to normal.
+  if (slowLeft > 0) {
+    slowLeft -= realDt;
+    timeScale = 0.3;
+  } else {
+    timeScale += (1 - timeScale) * Math.min(1, realDt * 8);
+  }
+  const dt = realDt * timeScale;
+  clock += realDt;
 
   if (!paused && !game.over && !ended) {
     phase += speedForLevel(game.level + 1) * dt;
@@ -239,12 +338,15 @@ function frame(now: number): void {
   }
 
   if (!paused) view.update(dt);
+  skyShown += (skyProgress(game.level) - skyShown) * Math.min(1, realDt * 1.5);
+  sky.draw(skyShown, view.climb, clock);
   view.render();
   requestAnimationFrame(frame);
 }
 
 function setPaused(value: boolean): void {
   paused = value;
+  music.setPaused(value);
   lastFrame = performance.now();
 }
 
@@ -253,6 +355,12 @@ function openFrom(origin: "top" | "end_card"): void {
   openStore(CTA_URL);
 }
 
+motionButton.addEventListener("click", () => {
+  reducedMotion = !reducedMotion;
+  applyMotion();
+  track("reduced_motion", { on: reducedMotion });
+});
+applyMotion();
 element("install").addEventListener("click", () => openFrom("top"));
 element("end-install").addEventListener("click", () => openFrom("end_card"));
 retryButton.addEventListener("click", () => {

@@ -3,11 +3,17 @@ import {
   CONFIG,
   StackGame,
   axisForLevel,
+  cameraPullOut,
+  comboTier,
+  isGoldenLevel,
+  isNearMiss,
   nearGoalMessage,
+  skyProgress,
   resolvePlacement,
   speedForLevel,
   starsFor,
 } from "../games/stack-tower/src/game/stack.ts";
+import { skyPalette, starAlpha } from "../games/stack-tower/src/render/sky.ts";
 
 describe("resolvePlacement", () => {
   const below = { center: 0, size: 3 };
@@ -86,6 +92,108 @@ describe("retention helpers", () => {
     expect(game.progress).toBe(0);
     game.drop(0);
     expect(game.progress).toBeCloseTo(1 / CONFIG.levelsToWin, 10);
+  });
+});
+
+describe("golden block", () => {
+  it("makes every fifth block golden and never the base", () => {
+    const golden = [0, 1, 4, 5, 6, 9, 10, 15].filter(isGoldenLevel);
+    expect(golden).toEqual([5, 10, 15]);
+  });
+
+  it("multiplies the points of the golden block only", () => {
+    const game = new StackGame();
+    const points: number[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      points.push(game.drop(game.axis === "x" ? game.top.x : game.top.z).points);
+    }
+    // Perfect combo 1..5 scores 2,3,4,5,6; the fifth block is golden: 6 x 3.
+    expect(points).toEqual([2, 3, 4, 5, 18]);
+    expect(game.score).toBe(32);
+  });
+
+  it("flags the golden result and multiplies a plain cut too", () => {
+    const game = new StackGame();
+    for (let i = 0; i < 4; i += 1) game.drop(game.axis === "x" ? game.top.x : game.top.z);
+    const center = (game.axis === "x" ? game.top.x : game.top.z) + 1;
+    const result = game.drop(center);
+    expect(result.kind).toBe("cut");
+    expect(result.golden).toBe(true);
+    expect(result.points).toBe(CONFIG.goldenMultiplier);
+  });
+
+  it("does not flag ordinary blocks as golden", () => {
+    const game = new StackGame();
+    expect(game.drop(0).golden).toBe(false);
+  });
+});
+
+describe("near miss", () => {
+  const below = { center: 0, size: 3 };
+
+  it("flags a cut with a thin overhang", () => {
+    const placement = resolvePlacement(below, { center: 0.25, size: 3 });
+    expect(placement.kind).toBe("cut");
+    expect(isNearMiss(placement)).toBe(true);
+  });
+
+  it("does not flag a perfect drop, a wide cut or a miss", () => {
+    expect(isNearMiss(resolvePlacement(below, { center: 0.05, size: 3 }))).toBe(false);
+    expect(isNearMiss(resolvePlacement(below, { center: 1, size: 3 }))).toBe(false);
+    expect(isNearMiss(resolvePlacement(below, { center: 5, size: 3 }))).toBe(false);
+  });
+
+  it("reports the near miss from the game drop", () => {
+    const game = new StackGame();
+    const result = game.drop(0.3);
+    expect(result.nearMiss).toBe(true);
+    expect(game.combo).toBe(0);
+  });
+
+  it("keeps the near miss window wider than the perfect tolerance", () => {
+    expect(CONFIG.nearMissMax).toBeGreaterThan(CONFIG.perfectTolerance);
+  });
+});
+
+describe("combo tiers and scenery", () => {
+  it("maps the combo to four tiers", () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 12].map(comboTier)).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
+  });
+
+  it("moves the sky from day to space as the tower grows, clamped to 0..1", () => {
+    expect(skyProgress(0)).toBe(0);
+    expect(skyProgress(CONFIG.levelsToWin / 2)).toBeCloseTo(0.5, 10);
+    expect(skyProgress(100)).toBe(1);
+    expect(skyProgress(-3)).toBe(0);
+  });
+
+  it("pulls the camera out monotonically and then stops", () => {
+    expect(cameraPullOut(0)).toBe(1);
+    expect(cameraPullOut(7)).toBeGreaterThan(cameraPullOut(3));
+    expect(cameraPullOut(40)).toBe(cameraPullOut(CONFIG.levelsToWin));
+  });
+});
+
+describe("sky", () => {
+  it("starts bright and ends dark, clamping out-of-range input", () => {
+    const day = skyPalette(0);
+    const space = skyPalette(1);
+    expect(day.top[2]).toBeGreaterThan(200);
+    expect(space.top[2]).toBeLessThan(60);
+    expect(skyPalette(-5)).toEqual(day);
+    expect(skyPalette(9)).toEqual(space);
+  });
+
+  it("shows no stars early and all of them late", () => {
+    expect(starAlpha(0.3)).toBe(0);
+    expect(starAlpha(0.65)).toBeCloseTo(0.5, 10);
+    expect(starAlpha(1)).toBe(1);
+  });
+
+  it("speeds up block by block and tops out at level 20", () => {
+    expect(speedForLevel(1)).toBeCloseTo(2.02, 10);
+    expect(speedForLevel(14)).toBeCloseTo(3.58, 10);
+    expect(speedForLevel(20)).toBeCloseTo(4.3, 10);
   });
 });
 
