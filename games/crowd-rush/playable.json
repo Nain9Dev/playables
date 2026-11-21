@@ -3,12 +3,12 @@
   "title": "Crowd Rush",
   "order": 2,
   "status": "live",
-  "tagline": "Steer through the gates. Grow the crowd. Crush the boss.",
+  "tagline": "Steer through the gates. Grab the coins. Dodge the saws. Crush the boss.",
   "genre": "Hyper-casual, gate runner",
-  "duration": "30 to 45 seconds",
+  "duration": "20 to 25 seconds",
   "orientation": "Portrait",
-  "hook": "The crowd is already running when the ad appears. A finger slides left and right to show the only control, and the first gate arrives in about a second, with two good choices so the first decision always rewards the player.",
-  "coreLoop": "Steer left or right to pick one gate in each row. Plus and times gates grow the crowd, minus and divide gates shrink it. After six rows the crowd meets a boss crowd, and the bigger one wins. The levels come from a seed, and there is always a path that wins.",
+  "hook": "The crowd is already running when the ad appears. A finger slides left and right to show the only control, coins spin on the road, and the first gate arrives in about a second with two good choices, so the first decision always rewards the player.",
+  "coreLoop": "Steer left or right to pick one gate in each of seven rows. Plus and times gates grow the crowd, minus and divide gates shrink it. Between the gates, coins, gems and recruits add one to three members and chain into a streak, while spinning saws take members away. At the halfway arch the crowd gets a speed boost. After the last row the crowd runs into a giant boss, and the bigger crowd wins. The levels come from a seed, and there is always a path that wins.",
   "levers": [
     {
       "name": "One control",
@@ -23,17 +23,37 @@
     {
       "name": "Visible growth",
       "why": "Seeing the number and the crowd grow is the whole pleasure of the genre.",
-      "how": "The crowd is an instanced mesh of up to 160 blobs, and the counter floats above it. Big gains add a field-of-view kick and a rising arpeggio."
+      "how": "The crowd is an instanced mesh of up to 160 low-poly runners with a bob, a lean into the turns and a short trail, and the counter floats above it. Big gains add a field-of-view kick and a rising arpeggio."
     },
     {
       "name": "Readable risk",
       "why": "The player must see which gate is bad before choosing, or a loss feels unfair.",
-      "how": "Blue gates add or multiply, red gates subtract or divide. The label is drawn on each gate, and the road shows both sides at once."
+      "how": "Blue arches add or multiply, red arches subtract or divide, and a tinted pad on the road shows each lane early. Saws have a pulsing red ring under them. Both road edges are always free of saws, which a property test checks for 200 seeds."
+    },
+    {
+      "name": "Collect and chain",
+      "why": "Small pickups between the big choices make some moments pay more than others and give a reason to steer even when no gate is near.",
+      "how": "Coins are worth 1, gems 2 and recruits 3, in seeded lines, zigzags, arcs and trails. Each pickup in an unbroken chain plays a higher note of a pentatonic scale, and every fifth pays one extra member. Missing a pickup ends the chain."
+    },
+    {
+      "name": "Dodge the saws",
+      "why": "A hazard that costs something makes steering a skill, and a close pass is a small thrill of its own.",
+      "how": "A spinning saw removes about a tenth of the crowd, at least two members, and never wipes it out alone. Passing just beside one shows CLOSE! with a whoosh. Pickups are placed away from the saw lane so greed has to dodge."
+    },
+    {
+      "name": "Speed boost",
+      "why": "A change of pace in the middle of a short run keeps it from feeling flat.",
+      "how": "At the halfway arch the crowd speeds up by 40 percent for about two seconds, with speed lines, a wider field of view, a gold flash and a chord. The scenery changes from meadow to autumn at the same point."
     },
     {
       "name": "Boss tension",
       "why": "A final fight gives the run an ending and turns the crowd size into a result.",
-      "how": "A BOSS AHEAD warning, then the two crowds shrink against each other with sparks, shake and short vibrations. The enemy is 65 percent of the best possible crowd, so a few mistakes still win."
+      "how": "A giant boss waits at the end of the road. A tug-of-war bar shows both crowds, the crowd flows into the boss, and the boss flashes on every hit. Wins make the crowd melt first and recover late, and a narrow fight, within a quarter of the bigger crowd, runs longer with a slow-motion finish and a heartbeat. The enemy is 65 percent of the best possible crowd, so a few mistakes still win."
+    },
+    {
+      "name": "Music that follows the crowd",
+      "why": "Sound that grows with the player makes progress felt, not only seen.",
+      "how": "A local synthesized loop adds a bass line, kick, hats and an arpeggio as the crowd grows, and runs at full intensity in the boss fight. It starts after the first input, like the other audio."
     },
     {
       "name": "Second chance with a gift",
@@ -46,28 +66,34 @@
     { "name": "first_input", "meaning": "Milliseconds from start to the first steering input. The key hook metric." },
     { "name": "gate", "meaning": "A gate was passed. Carries row, operation, value, and the crowd before and after." },
     { "name": "bad_gate", "meaning": "The player took a subtract or divide gate." },
+    { "name": "pickup", "meaning": "A coin, gem or recruit was collected. Carries kind, value and the chain length." },
+    { "name": "chain_bonus", "meaning": "Every fifth pickup in an unbroken chain paid an extra member." },
+    { "name": "chain_break", "meaning": "A pickup was missed and the chain ended. Carries the chain length." },
+    { "name": "saw_hit", "meaning": "A saw removed crowd members. Carries the loss and the crowd before and after." },
+    { "name": "near_miss", "meaning": "The crowd passed just beside a saw without touching it." },
     { "name": "idle_nudge", "meaning": "Nobody steered for 2.5 seconds and the finger sped up." },
-    { "name": "milestone", "meaning": "The halfway row was passed, and the rhythm break played." },
-    { "name": "boss_start", "meaning": "The final fight began. Carries the crowd and the enemy size." },
+    { "name": "milestone", "meaning": "The halfway arch was passed, and the rhythm break played." },
+    { "name": "speed_boost", "meaning": "The speed boost started at the halfway arch." },
+    { "name": "boss_start", "meaning": "The final fight began. Carries the crowd, the enemy size and whether the fight is narrow." },
     { "name": "fail", "meaning": "The run was lost. Carries the reason, the crowd or the boss." },
     { "name": "retry", "meaning": "The player used the second chance and took the bonus crowd." },
     { "name": "win", "meaning": "The boss was beaten. Carries the number of survivors." },
-    { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, crowd and enemy." },
+    { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, crowd, enemy, pickups, best chain and saw hits." },
     { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }
   ],
   "scorecard": {
-    "instant-motion": { "status": "yes", "note": "The crowd is already running when the ad appears, and the road scrolls." },
+    "instant-motion": { "status": "yes", "note": "The crowd is already running when the ad appears, and the road, coins and saws move." },
     "text-hook": { "status": "yes", "note": "The caption Pick the bigger number shows at the start and slides away after the first steer." },
     "one-control": { "status": "yes", "note": "Drag to steer, or move the mouse. A sliding finger shows it." },
     "first-reward": { "status": "yes", "note": "Both gates in the first row are good, so the first choice always grows the crowd." },
-    "pattern-interrupt": { "status": "yes", "note": "A HALFWAY burst with a field-of-view kick and a chord, then a BOSS AHEAD warning before the fight." },
-    "variable-reward": { "status": "partial", "note": "Gains vary by gate and big gains get a kick and an arpeggio, but there are no random drops or streaks." },
-    "open-loop": { "status": "yes", "note": "A progress bar fills toward the boss, and the boss crowd is visible at the end of the road." },
-    "near-miss": { "status": "partial", "note": "A loss shows the crowd against the enemy, but there is no almost-won moment during the fight." },
+    "pattern-interrupt": { "status": "yes", "note": "A halfway arch with a speed boost, speed lines, a gold flash and a chord, a scenery change from meadow to autumn, then a BOSS AHEAD warning before the fight." },
+    "variable-reward": { "status": "yes", "note": "Coins, gems and recruits worth 1 to 3 in seeded patterns, a rising note for every pickup in a chain and a bonus member on every fifth. The layout is fixed per seed, so it varies between runs only through what the player collects. Not measured with players." },
+    "open-loop": { "status": "yes", "note": "A progress bar fills toward the boss, and the giant boss is visible at the end of the road." },
+    "near-miss": { "status": "yes", "note": "CLOSE! with a whoosh when a saw passes just beside the crowd, and a narrow boss fight gets a slow-motion finish with a heartbeat while the tug-of-war bar hangs near the middle. Checked by hand in a browser, not measured with players." },
     "instant-retry": { "status": "yes", "note": "The first failure offers TRY AGAIN with 12 extra crowd members." },
-    "sound-haptics": { "status": "yes", "note": "A note for each gate, a rising arpeggio for big gains, hit sounds in the fight and vibrations. Audio starts after the first input." },
-    "cliffhanger-end": { "status": "yes", "note": "Animated stars and a survivor count, then a teaser about a bigger boss in Level 2 and a PLAY LEVEL 2 button. Level 2 is a teaser: the button goes to the store link." },
-    "measured": { "status": "yes", "note": "Events include first_input, gate, bad_gate, milestone and boss_start, all listed on this page." }
+    "sound-haptics": { "status": "yes", "note": "A note for each gate, a rising note for each pickup in a chain, a saw sound, a whoosh for near misses, hit sounds and a heartbeat in the fight, vibrations on all of them, and a local music loop that follows the crowd size. Audio starts after the first input. Not checked on a real phone." },
+    "cliffhanger-end": { "status": "yes", "note": "Animated stars, a survivor count and the best chain, then a teaser about a bigger boss in Level 2 and a PLAY LEVEL 2 button. Level 2 is a teaser: the button goes to the store link." },
+    "measured": { "status": "yes", "note": "Events include first_input, gate, bad_gate, pickup, saw_hit, near_miss, milestone, speed_boost and boss_start, all listed on this page. The events are emitted, but no player data has been collected." }
   },
   "stack": ["TypeScript", "Three.js", "InstancedMesh", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
   "source": "https://github.com/Nain9Dev/playables/tree/main/games/crowd-rush",
