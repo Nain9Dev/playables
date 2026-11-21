@@ -86,7 +86,7 @@ for (const entry of entries) {
   cpSync(join(builtDir, slug, "index.html"), join(dist, "play", `${slug}.html`));
   if (entry.hasPoster) cpSync(join(gamesDir, slug, "poster.jpg"), join(dist, "posters", `${slug}.jpg`));
   mkdirSync(join(dist, slug), { recursive: true });
-  writeFileSync(join(dist, slug, "index.html"), renderDetail(entry, info));
+  writeFileSync(join(dist, slug, "index.html"), renderDetail(entry, info, entries));
 }
 
 writeFileSync(join(dist, "index.html"), renderIndex(entries, info));

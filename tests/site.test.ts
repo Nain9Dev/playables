@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { validatePlayable } from "../kit/validate.ts";
 import { parseMeta } from "../site/meta.ts";
-import { PRINCIPLES, tally } from "../site/principles.ts";
+import { PRINCIPLES, SHORT_LABEL, tally } from "../site/principles.ts";
 import {
   esc,
   formatBytes,
+  neighbours,
+  radar,
   render404,
+  scoreRing,
   renderDetail,
   renderIndex,
   renderRobots,
@@ -118,6 +121,90 @@ describe("scorecard", () => {
       expect(matrix).toContain(esc(principle.title));
     }
     expect(table).toContain("Note for measured.");
+  });
+});
+
+describe("visual summaries", () => {
+  it("has a short axis label for every principle", () => {
+    for (const principle of PRINCIPLES) {
+      const label = SHORT_LABEL[principle.id];
+      expect(label, principle.id).toBeTruthy();
+      expect((label ?? "").length).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it("draws the ring in proportion to the principles met", () => {
+    const full = scoreRing(12, 12);
+    const half = scoreRing(6, 12);
+    const circumference = 2 * Math.PI * 21;
+    expect(full).toContain(`stroke-dasharray="${circumference.toFixed(1)} ${circumference.toFixed(1)}"`);
+    expect(half).toContain(`stroke-dasharray="${(circumference / 2).toFixed(1)} ${circumference.toFixed(1)}"`);
+    expect(half).toContain("6 of 12 retention principles met");
+    expect(scoreRing(0, 0)).toContain("0 of 0");
+  });
+
+  it("draws one axis, one label and one dot per principle in the radar", () => {
+    const svg = radar(entry());
+    expect(svg.match(/class="radar-axis"/g)).toHaveLength(PRINCIPLES.length);
+    expect(svg.match(/class="radar-label"/g)).toHaveLength(PRINCIPLES.length);
+    expect(svg.match(/class="radar-dot /g)).toHaveLength(PRINCIPLES.length);
+    expect(svg).toContain("principles fully met");
+  });
+
+  it("puts a partial score closer to the center than a full one", () => {
+    const meta = parseMeta(GOOD_META, "demo-game");
+    const all = (status: "yes" | "partial") =>
+      ({ ...entry(), meta: { ...meta, scorecard: Object.fromEntries(PRINCIPLES.map((p) => [p.id, { status, note: "x" }])) } });
+    const area = (svg: string): number => {
+      const points = (svg.match(/class="radar-shape" points="([^"]+)"/)?.[1] ?? "").split(" ").map((pair) => pair.split(",").map(Number));
+      return points.reduce((sum, [x = 0, y = 0], i) => {
+        const [nx = 0, ny = 0] = points[(i + 1) % points.length] ?? [];
+        return sum + (x * ny - nx * y);
+      }, 0) / 2;
+    };
+    expect(Math.abs(area(radar(all("partial"))))).toBeLessThan(Math.abs(area(radar(all("yes")))));
+  });
+
+  it("finds the neighbours of a playable", () => {
+    expect(neighbours(["a", "b", "c"], 0)).toEqual({ previous: null, next: "b" });
+    expect(neighbours(["a", "b", "c"], 1)).toEqual({ previous: "a", next: "c" });
+    expect(neighbours(["a", "b", "c"], 2)).toEqual({ previous: "b", next: null });
+    expect(neighbours(["a"], 0)).toEqual({ previous: null, next: null });
+  });
+
+  it("shows a fan of phones in the hero with the featured one in the middle", () => {
+    const a = entry();
+    const b = { ...entry(), meta: { ...a.meta, slug: "second", title: "Second", order: 2 } };
+    const c = { ...entry(), meta: { ...a.meta, slug: "third", title: "Third", order: 3 } };
+    const hero = renderIndex([a, b, c], INFO).match(/<div class="hero-phones">([\s\S]*?)<\/div>\s*<\/div>\s*<\/section>/)?.[1] ?? "";
+    const order = [...hero.matchAll(/data-title="([^"]+)"/g)].map((m) => m[1]);
+    expect(order).toEqual(["Second", "Demo &lt;Game&gt;", "Third"]);
+    expect(hero).toContain("phone-hero");
+    expect(hero.match(/phone-side/g)).toHaveLength(2);
+  });
+
+  it("shows a ring on every card", () => {
+    expect(renderIndex([entry()], INFO)).toContain('class="ring"');
+  });
+
+  it("links the previous and next playable at the end of a detail page", () => {
+    const a = entry();
+    const b = { ...entry(), meta: { ...a.meta, slug: "second", title: "Second", order: 2 } };
+    const c = { ...entry(), meta: { ...a.meta, slug: "third", title: "Third", order: 3 } };
+    const html = renderDetail(b, INFO, [c, a, b]);
+    expect(html).toContain('class="pager-link prev" href="../demo-game/"');
+    expect(html).toContain('class="pager-link next" href="../third/"');
+    const first = renderDetail(a, INFO, [a, b, c]);
+    expect(first).toContain('class="pager-link prev none"');
+  });
+
+  it("gives the detail page section anchors for its sticky nav", () => {
+    const html = renderDetail(entry(), INFO);
+    for (const id of ["hook", "levers", "scorecard", "telemetry", "verified"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`href="#${id}"`);
+    }
+    for (const stat of ["stat-first", "stat-events", "stat-span"]) expect(html).toContain(`id="${stat}"`);
   });
 });
 

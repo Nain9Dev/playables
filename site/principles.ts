@@ -77,6 +77,22 @@ export const PRINCIPLES: readonly Principle[] = [
   },
 ];
 
+/** Short axis labels for the radar chart, one per principle id. */
+export const SHORT_LABEL: Record<string, string> = {
+  "instant-motion": "Motion",
+  "text-hook": "Hook",
+  "one-control": "Control",
+  "first-reward": "Reward",
+  "pattern-interrupt": "Rhythm",
+  "variable-reward": "Variety",
+  "open-loop": "Goal",
+  "near-miss": "Near-win",
+  "instant-retry": "Retry",
+  "sound-haptics": "Sound",
+  "cliffhanger-end": "Ending",
+  measured: "Measured",
+};
+
 export type Status = "yes" | "partial" | "no";
 
 export interface Score {
