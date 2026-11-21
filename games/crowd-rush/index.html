@@ -21,8 +21,33 @@
     pointer-events: none; will-change: transform; padding: 2px 12px; border-radius: 14px; background: rgba(30, 90, 220, 0.78);
   }
   #count.bump { filter: brightness(1.3); }
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; }
+  #flash.red { background: radial-gradient(ellipse at center, rgba(255, 40, 60, 0) 40%, rgba(255, 40, 60, 0.55) 100%); }
+  #flash.gold { background: radial-gradient(ellipse at center, rgba(255, 225, 77, 0) 35%, rgba(255, 225, 77, 0.5) 100%); }
+  #flash.white { background: rgba(255, 255, 255, 0.5); }
+  #flash.go { animation: flash 0.45s ease-out; }
+  @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #chain {
+    position: fixed; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 34px); color: #ffe14d; font-size: 22px; font-weight: 900;
+    letter-spacing: 0.04em; text-shadow: var(--shadow); opacity: 0; pointer-events: none; transform-origin: left center;
+  }
+  #chain.show { animation: chain-pop 1.6s ease-out forwards; }
+  @keyframes chain-pop { 0% { opacity: 0; transform: scale(0.6); } 10% { opacity: 1; transform: scale(1.35); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #bossbar {
+    position: fixed; left: 14px; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 36px); display: none; pointer-events: none;
+    font-weight: 900; color: #fff; text-shadow: var(--shadow);
+  }
+  #bossbar.show { display: block; animation: rise 0.35s ease-out; }
+  #bossbar .names { display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 3px; }
+  #bossbar .names b:first-child { color: #7cc4ff; }
+  #bossbar .names b:last-child { color: #ff7a88; }
+  #bossbar .bar { display: flex; height: 18px; border-radius: 999px; overflow: hidden; border: 3px solid #fff; box-shadow: var(--shadow); background: #fff; }
+  #bar-you { background: linear-gradient(#59b6ff, #2f7bff); flex: 1 1 0; transition: flex-grow 0.08s linear; }
+  #bar-boss { background: linear-gradient(#ff6b7b, #e0213a); flex: 1 1 0; transition: flex-grow 0.08s linear; }
+  #bossbar.close .bar { animation: throb 0.42s ease-in-out infinite; }
+  @keyframes throb { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.35); } }
   #toast {
-    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 48px); left: 0; right: 0;
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 72px); left: 0; right: 0;
     text-align: center; color: var(--hud); font-size: 28px; font-weight: 900; letter-spacing: 0.08em;
     text-shadow: var(--shadow); opacity: 0; pointer-events: none;
   }
@@ -44,6 +69,7 @@
   }
   .gate-pop.good { color: #7dffa0; }
   .gate-pop.bad { color: #ff6b7b; }
+  .gate-pop.coin { color: #ffe14d; font-size: 30px; }
   @keyframes float-up { from { opacity: 1; margin-top: 0; transform: translate(-50%, -100%) scale(0.7); } 25% { transform: translate(-50%, -100%) scale(1.25); } to { opacity: 0; margin-top: -90px; transform: translate(-50%, -100%) scale(1); } }
 
   #hint {
@@ -86,6 +112,7 @@
   #stars span:nth-child(3) { animation-delay: 0.3s; }
   @keyframes star-in { from { opacity: 0; transform: scale(0) rotate(-60deg); } to { opacity: 1; transform: none; } }
   .card p { font-size: 17px; opacity: 0.75; margin-bottom: 18px; }
+  .card p.stats { font-size: 14px; margin-top: -12px; margin-bottom: 14px; opacity: 0.6; }
   .card p.teaser { font-weight: 800; opacity: 1; color: #d64b00; margin-top: -8px; animation: tease 1.2s ease-in-out infinite; }
   @keyframes tease { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
   .card .cta { display: block; width: 100%; padding: 16px; font-size: 20px; }
@@ -102,6 +129,12 @@
 <div id="progress" aria-hidden="true"><div id="fill"></div></div>
 <div id="count" aria-live="polite">10</div>
 <div id="caption">Pick the <b>bigger</b> number!</div>
+<div id="flash"></div>
+<div id="chain" aria-hidden="true"></div>
+<div id="bossbar" aria-hidden="true">
+  <div class="names"><b>YOU <span id="you-n">0</span></b><b>BOSS <span id="boss-n">0</span></b></div>
+  <div class="bar"><div id="bar-you"></div><div id="bar-boss"></div></div>
+</div>
 <div id="toast"></div>
 <div id="pops"></div>
 <div id="hint">DRAG TO STEER<div class="track"><span class="finger"></span></div></div>
@@ -111,6 +144,7 @@
     <h1 id="end-title">You crushed it!</h1>
     <div id="stars" aria-hidden="true"></div>
     <p id="end-text">0 survivors</p>
+    <p id="end-stats" class="stats"></p>
     <p id="teaser" class="teaser"></p>
     <button id="end-install" class="cta" type="button">PLAY LEVEL 2</button>
     <button id="retry" class="retry" type="button">TRY AGAIN</button>

@@ -14,7 +14,13 @@ export const MAX_ACTIVE_SECONDS = 50;
 export const END_CARD_DELAY_MS = 1100;
 
 /** Length of the final crowd fight, in seconds. */
-export const BATTLE_SECONDS = 1.7;
+export const BATTLE_SECONDS = 2.6;
+
+/** A narrow fight lasts longer, with a slow-motion finish, so the tension has room. */
+export const BATTLE_SECONDS_CLOSE = 3.8;
+
+/** Seconds the boss takes to fall or celebrate before the end card timer starts mattering. */
+export const BOSS_FINISH_SECONDS = 0.9;
 
 /** The first failure offers one more try before the install button takes over. */
 export const RETRIES = 1;
