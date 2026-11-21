@@ -77,6 +77,7 @@
     { "name": "boss_start", "meaning": "The final fight began. Carries the crowd, the enemy size and whether the fight is narrow." },
     { "name": "fail", "meaning": "The run was lost. Carries the reason, the crowd or the boss." },
     { "name": "retry", "meaning": "The player used the second chance and took the bonus crowd." },
+    { "name": "replay", "meaning": "The player started a fresh run from the end card after the second chance was spent." },
     { "name": "win", "meaning": "The boss was beaten. Carries the number of survivors." },
     { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, crowd, enemy, pickups, best chain and saw hits." },
     { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }

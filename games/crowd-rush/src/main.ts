@@ -1,5 +1,5 @@
 import { onViewableChange, openStore, whenAdReady } from "../../../kit/sdk.ts";
-import { haptic, note, tone, unlockAudio } from "../../../kit/audio.ts";
+import { haptic, note, pauseAudio, resumeAudio, tone, unlockAudio } from "../../../kit/audio.ts";
 import { track } from "../../../kit/telemetry.ts";
 import {
   BATTLE_SECONDS,
@@ -437,8 +437,13 @@ function frame(now: number): void {
 function setPaused(value: boolean): void {
   paused = value;
   lastFrame = performance.now();
-  if (value) music.pause();
-  else if (hasInput) music.resume();
+  if (value) {
+    music.pause();
+    pauseAudio();
+  } else if (hasInput) {
+    music.resume();
+    resumeAudio();
+  }
 }
 
 function openFrom(origin: "top" | "end_card"): void {
@@ -457,7 +462,8 @@ function firstInput(): void {
 }
 
 function steerFrom(clientX: number): void {
-  steer = Math.max(-1, Math.min(1, ((clientX / window.innerWidth) * 2 - 1) * 1.15));
+  // Camera looks down +Z, so screen left maps to +X and screen right maps to -X.
+  steer = Math.max(-1, Math.min(1, (1 - (clientX / window.innerWidth) * 2) * 1.15));
   firstInput();
   idleSeconds = 0;
 }
@@ -487,8 +493,8 @@ window.addEventListener("pointermove", (event) => {
   if (event.pointerType === "mouse" || event.buttons > 0) steerFrom(event.clientX);
 });
 window.addEventListener("keydown", (event) => {
-  if (event.code === "ArrowLeft" || event.code === "KeyA") steer = -1;
-  if (event.code === "ArrowRight" || event.code === "KeyD") steer = 1;
+  if (event.code === "ArrowLeft" || event.code === "KeyA") steer = 1;
+  if (event.code === "ArrowRight" || event.code === "KeyD") steer = -1;
   if (event.code.startsWith("Arrow") || event.code === "KeyA" || event.code === "KeyD") firstInput();
 });
 

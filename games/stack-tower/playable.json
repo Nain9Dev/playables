@@ -88,6 +88,7 @@
     { "name": "reduced_motion", "meaning": "The player switched the reduced-motion toggle. Carries the new state." },
     { "name": "fail", "meaning": "The block missed the tower. Carries level and score." },
     { "name": "retry", "meaning": "The player used the second chance." },
+    { "name": "replay", "meaning": "The player started a fresh run from the end card after the second chance was spent." },
     { "name": "win", "meaning": "The tower reached 14 blocks." },
     { "name": "end_card", "meaning": "The end card is shown. Carries outcome, score, stars and level." },
     { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }

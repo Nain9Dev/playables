@@ -79,7 +79,7 @@
     "open-loop": { "status": "yes", "note": "A progress bar and a SORTED x/5 counter fill up, and the move counter runs down. The bar starts with a sliver so the goal looks started." },
     "near-miss": { "status": "yes", "note": "ONE POUR TO WIN, LAST COLOR and the last moves counted out, and a loss with four tubes sorted earns two stars." },
     "instant-retry": { "status": "yes", "note": "One tap on TRY AGAIN restarts the same level with an extra empty tube and two more moves." },
-    "sound-haptics": { "status": "yes", "note": "Pick-up, landing, tube, combo, win and fail sounds plus looping music with a mute button, all silent until the first tap. Vibration works only where the browser has the API, so not on iOS." },
+    "sound-haptics": { "status": "yes", "note": "Pick-up, landing, tube, combo, win and fail sounds plus looping music with a mute button that silences both music and effects, all silent until the first tap and suspended when hidden or not viewable. Vibration works only where the browser has the API, so not on iOS." },
     "cliffhanger-end": { "status": "yes", "note": "Stars, then a teaser about Level 2 with more colors and fewer free tubes. Level 2 is a teaser: the button goes to the store link." },
     "measured": { "status": "yes", "note": "Events include first_tap, first_pour, invalid, tube_complete, combo and near_win, all listed on this page." }
   },

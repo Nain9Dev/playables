@@ -1,5 +1,5 @@
 import { onViewableChange, openStore, whenAdReady } from "../../../kit/sdk.ts";
-import { haptic, note, tone, unlockAudio } from "../../../kit/audio.ts";
+import { haptic, note, pauseAudio, resumeAudio, setAudioMuted, tone, unlockAudio } from "../../../kit/audio.ts";
 import { track } from "../../../kit/telemetry.ts";
 import {
   COLORS,
@@ -391,8 +391,13 @@ function frame(now: number): void {
 function setPaused(value: boolean): void {
   paused = value;
   lastFrame = performance.now();
-  if (value) music.pause();
-  else if (hasTapped) music.resume();
+  if (value) {
+    music.pause();
+    pauseAudio();
+  } else if (hasTapped) {
+    music.resume();
+    resumeAudio();
+  }
 }
 
 function openFrom(origin: "top" | "end_card"): void {
@@ -415,8 +420,10 @@ againButton.addEventListener("click", () => {
 soundButton.addEventListener("click", () => {
   unlockAudio();
   music.start();
-  music.setMuted(!music.muted);
-  soundButton.classList.toggle("muted", music.muted);
+  const nextMuted = !music.muted;
+  music.setMuted(nextMuted);
+  setAudioMuted(nextMuted);
+  soundButton.classList.toggle("muted", nextMuted);
 });
 
 document.addEventListener("visibilitychange", () => setPaused(document.hidden));
