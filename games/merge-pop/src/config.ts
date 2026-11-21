@@ -16,6 +16,9 @@ export const END_CARD_DELAY_MS = 900;
 /** The first failure offers one more try before the install button takes over. */
 export const RETRIES = 1;
 
+/** Active seconds before the automatic demo move, if the player has not swiped yet. */
+export const DEMO_MOVE_SECONDS = 0.7;
+
 /** Idle seconds before the swipe hint speeds up. */
 export const IDLE_NUDGE_SECONDS = 2.5;
 

@@ -42,7 +42,19 @@ export const CONFIG = {
   retryBonusMoves: 6,
   /** Share of spawned tiles that are a 2 (the rest are 4). */
   twoShare: 0.9,
+  /** The free smash booster is offered once this many moves have been played. */
+  boosterAtMove: 8,
+  /** Highest streak multiplier. */
+  maxMultiplier: 4,
 } as const;
+
+/**
+ * Score multiplier for a streak of consecutive moves that merged something.
+ * 1 merging move is x1, 2 are x2, 4 are x3 and 6 or more are x4.
+ */
+export function multiplierFor(streak: number): number {
+  return Math.min(CONFIG.maxMultiplier, 1 + Math.floor(Math.max(0, streak) / 2));
+}
 
 /**
  * Opening layout. It starts with a 64 so the goal feels close from the first second.
@@ -166,7 +178,29 @@ export interface MoveResult {
   spawned: Tile | null;
   /** Merges in this single move. Two or more is a combo. */
   combo: number;
+  /** Consecutive moves (this one included) that merged something. 0 after a move without a merge. */
+  streak: number;
+  /** Score multiplier applied to this move. `gained` already includes it. */
+  multiplier: number;
+  /** True when this move put the second half-goal tile (64) on the board for the first time. */
+  milestone: boolean;
   outcome: Outcome;
+}
+
+/** Direction that merges the most tiles, then scores the most. Used by the automatic demo move. */
+export function demoDirection(tiles: readonly Tile[]): Direction | null {
+  let best: Direction | null = null;
+  let bestKey = -1;
+  for (const direction of ["left", "right", "up", "down"] as const) {
+    const result = slide(tiles, direction);
+    if (!result.moved) continue;
+    const key = result.merges.length * 1000 + result.gained;
+    if (key > bestKey) {
+      bestKey = key;
+      best = direction;
+    }
+  }
+  return best;
 }
 
 export class MergeGame {
@@ -174,6 +208,12 @@ export class MergeGame {
   score = 0;
   movesLeft: number;
   outcome: Outcome = "playing";
+  /** Consecutive moves that merged something. */
+  streak = 0;
+  /** Moves the player has spent (free demo moves do not count). */
+  movesMade = 0;
+  boosterUsed = false;
+  private milestoneHit = false;
   private nextId = 1;
   private readonly rand: () => number;
 
@@ -215,20 +255,59 @@ export class MergeGame {
     return tile;
   }
 
-  move(direction: Direction): MoveResult {
-    if (this.outcome !== "playing") {
-      return { moved: false, merges: [], gained: 0, spawned: null, combo: 0, outcome: this.outcome };
-    }
+  /** True once the free smash booster should be offered and has not been used. */
+  get boosterReady(): boolean {
+    return !this.boosterUsed && this.outcome === "playing" && this.movesMade >= CONFIG.boosterAtMove;
+  }
+
+  /**
+   * Remove the tile at a cell. Costs no move and spawns nothing. One use per game.
+   * Returns the removed tile, or null when the booster is not ready or the cell is empty.
+   */
+  smash(row: number, col: number): Tile | null {
+    if (!this.boosterReady) return null;
+    const target = this.tiles.find((tile) => tile.row === row && tile.col === col);
+    if (!target) return null;
+    this.tiles = this.tiles.filter((tile) => tile.id !== target.id);
+    this.boosterUsed = true;
+    return target;
+  }
+
+  /** `free` moves (the automatic demo) spend no move from the budget. */
+  move(direction: Direction, free = false): MoveResult {
+    const none = (): MoveResult => ({
+      moved: false,
+      merges: [],
+      gained: 0,
+      spawned: null,
+      combo: 0,
+      streak: this.streak,
+      multiplier: multiplierFor(this.streak),
+      milestone: false,
+      outcome: this.outcome,
+    });
+    if (this.outcome !== "playing") return none();
 
     const result = slide(this.tiles, direction);
-    if (!result.moved) {
-      return { moved: false, merges: [], gained: 0, spawned: null, combo: 0, outcome: this.outcome };
-    }
+    if (!result.moved) return none();
+
+    this.streak = result.merges.length > 0 ? this.streak + 1 : 0;
+    const multiplier = multiplierFor(this.streak);
+    const gained = result.gained * multiplier;
 
     this.tiles = result.tiles;
-    this.score += result.gained;
-    this.movesLeft -= 1;
+    this.score += gained;
+    if (!free) {
+      this.movesLeft -= 1;
+      this.movesMade += 1;
+    }
     const spawned = this.spawn();
+
+    let milestone = false;
+    if (!this.milestoneHit && countValue(this.tiles, CONFIG.goal / 2) >= 2) {
+      this.milestoneHit = true;
+      milestone = true;
+    }
 
     if (this.best >= CONFIG.goal) this.outcome = "won";
     else if (this.movesLeft <= 0 || !canMove(this.tiles)) this.outcome = "lost";
@@ -236,12 +315,23 @@ export class MergeGame {
     return {
       moved: true,
       merges: result.merges,
-      gained: result.gained,
+      gained,
       spawned,
       combo: result.merges.length,
+      streak: this.streak,
+      multiplier,
+      milestone,
       outcome: this.outcome,
     };
   }
+}
+
+/** Short line for the end card after a loss, built from how close the board was. */
+export function nearMissLine(tiles: readonly Tile[]): string {
+  const half = CONFIG.goal / 2;
+  if (countValue(tiles, half) >= 2) return "Two 64s were one merge from 128!";
+  if (bestTile(tiles) >= half) return "You made a 64. The 128 is one merge away.";
+  return `Best tile ${bestTile(tiles)}. Goal ${CONFIG.goal}.`;
 }
 
 /** Stars for the end card: moves left on a win, how far the best tile got on a loss. */

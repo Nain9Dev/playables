@@ -7,9 +7,14 @@
   "genre": "Puzzle, merge",
   "duration": "30 to 50 seconds",
   "orientation": "Portrait",
-  "hook": "The caption asks a question, Can you merge to 128, and the board already holds a 64 and a 32, so the goal feels close from the first frame. A finger swipes across the screen, and the first swipe merges something, with a pop, a note and a score.",
-  "coreLoop": "Swipe to slide every tile. Two equal tiles that meet merge into one of double value, and each move spawns a new 2 or 4. The player has 24 moves to make a 128. The spawns come from a seed, so the same moves always give the same game.",
+  "hook": "The caption asks a question, Can you merge to 128, and the board already holds a 64 and a 32, so the goal feels close from the first frame. Dust drifts, the tiles breathe, and if nobody has swiped after 0.7 seconds the game plays one merge by itself, with a pop and a ring, then hands control back at once. The first real swipe merges something too.",
+  "coreLoop": "Swipe to slide every tile. Two equal tiles that meet merge into one of double value, and each move spawns a new 2 or 4. Moves that merge build a streak that multiplies the score up to x4. At move 8 a free smash booster removes any one tile. The player has 24 moves to make a 128. The spawns come from a seed, so the same moves always give the same game.",
   "levers": [
+    {
+      "name": "Motion before the first touch",
+      "why": "Playable networks judge an ad in its first seconds, and a still board looks like a screenshot.",
+      "how": "Dust drifts across the scene and the tiles breathe from the first frame. After 0.7 seconds without a swipe the game plays one merge by itself (a demo_move event that costs no move) and gives control back at once."
+    },
     {
       "name": "A question as the hook",
       "why": "A text hook that asks something starts the player's thinking before the first input.",
@@ -18,7 +23,22 @@
     {
       "name": "Goal in sight",
       "why": "A goal that looks reachable keeps people playing. A goal that looks far makes them leave.",
-      "how": "The board opens with a 64 and a 32 and the first move already merges. A progress bar fills on a log scale toward 128."
+      "how": "The board opens with a 64 and a 32 and the first move already merges. A progress bar fills on a log scale toward 128 and carries a marker at 64."
+    },
+    {
+      "name": "Merge juice",
+      "why": "Feedback that is bigger than the input makes a merge feel like a hit, and it tells the player the move worked.",
+      "how": "Tiles squash and stretch on a merge, a ring spreads over the board, sparks fly and the camera punches in. The size of the burst follows the tile value. Tiles have a bevel, a gloss band and an outlined number, with one color per value."
+    },
+    {
+      "name": "Streak multiplier",
+      "why": "A chain that can be broken gives the player something to protect and makes some moves worth more than others.",
+      "how": "Each move that merges adds to a streak. Streaks of 2, 4 and 6 move the score multiplier to x2, x3 and x4. A move without a merge breaks it and shows STREAK LOST. The pips and the multiplier sit above the stats."
+    },
+    {
+      "name": "Free booster at move 8",
+      "why": "A scheduled gift changes the rhythm, and being able to fix a bad board delays the moment the player gives up.",
+      "how": "After the 8th move a FREE SMASH button appears. One tap on it and one tap on any tile removes that tile for no move. It can be used once per game. It is a free booster, not a video ad."
     },
     {
       "name": "Pressure with a clear limit",
@@ -26,19 +46,19 @@
       "how": "The move counter turns red and throbs under six moves. The run ends at 24 moves, so the ad stays within the 30 to 50 second window."
     },
     {
-      "name": "Combos and big merges",
-      "why": "Variable rewards make some moves feel special, and special moves are the ones people remember.",
-      "how": "Two or more merges in one swipe show COMBO with a zoom punch and a second note. A merge of 64 or more shows HUGE with a shake and a bigger burst."
-    },
-    {
       "name": "Near-win tension",
       "why": "Being one step from winning is the strongest reason to try once more.",
-      "how": "With two 64 tiles on the board the game shows ONE MERGE TO WIN. Losing with a 64 on the board earns two stars."
+      "how": "Reaching the second 64 pulses the milestone marker. With two 64 tiles on the board both glow and pulse and the game shows ONE MERGE TO WIN. A loss names how close it was and still earns two stars with a 64."
+    },
+    {
+      "name": "Music that follows the play",
+      "why": "Sound that reacts to what the player does makes a streak feel like it is building.",
+      "how": "A short loop is synthesized with Web Audio, with no audio file. A longer streak adds layers: an arpeggio, then a kick and hats, then a lead. Music starts only after the first touch, as ad networks require, and pauses with the ad."
     },
     {
       "name": "Fair difficulty, tested",
       "why": "A puzzle that is too hard feels broken, and one that is too easy is boring.",
-      "how": "A test plays 200 seeds with a simple bot and fails if it wins under 30 percent or over 80 percent of them. A human who plans ahead wins more than the bot."
+      "how": "A test plays 200 seeds with a simple bot and fails if it wins under 30 percent or over 80 percent of them. The opening layout was not changed. The bot wins about 53 percent over 1000 seeds, and a human who plans ahead and uses the booster should win more."
     },
     {
       "name": "Second chance with a gift",
@@ -48,31 +68,38 @@
   ],
   "events": [
     { "name": "impression", "meaning": "The ad is ready and visible, and the game starts." },
-    { "name": "first_move", "meaning": "Milliseconds from start to the first swipe. The key hook metric." },
-    { "name": "move", "meaning": "A swipe changed the board. Carries direction, merges, best tile and moves left." },
+    { "name": "demo_move", "meaning": "Nobody swiped for 0.7 seconds, so the game played one free merge. Carries direction and merges." },
+    { "name": "first_move", "meaning": "Milliseconds from start to the first swipe by the player. The key hook metric." },
+    { "name": "move", "meaning": "A swipe changed the board. Carries direction, merges, best tile, moves left and streak." },
     { "name": "blocked", "meaning": "A swipe that moved nothing. A high rate can mean the controls are unclear." },
     { "name": "combo", "meaning": "Two or more merges in one swipe." },
+    { "name": "streak", "meaning": "The score multiplier went up. Carries the streak length and the multiplier." },
+    { "name": "streak_lost", "meaning": "A move without a merge broke a streak of two or more. Carries the length it had." },
+    { "name": "milestone", "meaning": "The second 64 appeared for the first time, so the goal is one merge away." },
     { "name": "near_win", "meaning": "The board holds a 64 and the goal is one merge away." },
+    { "name": "booster_offered", "meaning": "The free smash button appeared after move 8." },
+    { "name": "booster_used", "meaning": "The player removed a tile with the booster. Carries the tile value." },
     { "name": "idle_nudge", "meaning": "Nobody swiped for 2.5 seconds and the finger sped up." },
     { "name": "fail", "meaning": "The run was lost. Carries the reason, no moves left or no legal move." },
     { "name": "retry", "meaning": "The player used the second chance and took the extra moves." },
+    { "name": "replay", "meaning": "The player started a fresh run from the end card after the second chance was spent." },
     { "name": "win", "meaning": "A 128 was made. Carries moves left and the score." },
     { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, best tile and score." },
     { "name": "cta_click", "meaning": "The install button was pressed. Carries where it was pressed." }
   ],
   "scorecard": {
-    "instant-motion": { "status": "partial", "note": "The board is still until the first swipe. Only the caption and the swipe finger move, so the first frame is calmer than in the other two." },
+    "instant-motion": { "status": "yes", "note": "Dust drifts and the tiles breathe from the first frame, and an automatic merge plays after 0.7 seconds if nobody has swiped. Checked by hand in a browser at phone proportions, not measured on real devices." },
     "text-hook": { "status": "yes", "note": "The caption Can you merge to 128 opens as a question and slides away after the first swipe." },
-    "one-control": { "status": "yes", "note": "One swipe in any direction, with arrow keys on desktop. A sliding finger shows it." },
-    "first-reward": { "status": "yes", "note": "The opening layout guarantees a merge on the first moves, with a pop, a note and a score." },
-    "pattern-interrupt": { "status": "partial", "note": "Combos and HUGE merges break the rhythm, but they depend on the player. There is no scheduled change." },
-    "variable-reward": { "status": "yes", "note": "Combos, merges of different size with rising notes, and random spawns from a seed." },
-    "open-loop": { "status": "yes", "note": "A progress bar on a log scale toward 128 and a move counter that runs down." },
-    "near-miss": { "status": "yes", "note": "ONE MERGE TO WIN appears with two 64 tiles, and losing with a 64 earns two stars." },
-    "instant-retry": { "status": "yes", "note": "The first failure offers TRY AGAIN with 6 extra moves." },
-    "sound-haptics": { "status": "yes", "note": "Merge notes that climb a scale with the tile value, a blocked-move buzz and vibrations. Audio starts after the first swipe." },
-    "cliffhanger-end": { "status": "yes", "note": "Stars and the best tile, then a teaser about a 256 goal in Level 2 and a PLAY LEVEL 2 button. Level 2 is a teaser: the button goes to the store link." },
-    "measured": { "status": "yes", "note": "Events include first_move, blocked, combo and near_win, all listed on this page." }
+    "one-control": { "status": "yes", "note": "One swipe in any direction, with arrow keys on desktop. A sliding finger shows it. The booster adds one optional tap." },
+    "first-reward": { "status": "yes", "note": "The demo merge and the opening layout guarantee a merge at the start, with a pop, a ring, sparks and a score. The first swipe pays off the same way, with sound." },
+    "pattern-interrupt": { "status": "yes", "note": "A scheduled change at move 8, the free smash booster, plus the 64 milestone and the red throbbing counter in the last five moves." },
+    "variable-reward": { "status": "yes", "note": "Combos, a streak multiplier up to x4, merges of different size with rising notes, and random spawns from a seed." },
+    "open-loop": { "status": "yes", "note": "A progress bar on a log scale toward 128 with a marker at 64, and a move counter that runs down." },
+    "near-miss": { "status": "yes", "note": "The two 64 tiles glow and pulse with ONE MERGE TO WIN, and a loss says how close it was." },
+    "instant-retry": { "status": "yes", "note": "The first failure offers TRY AGAIN with 6 extra moves, and the end card names the near miss." },
+    "sound-haptics": { "status": "partial", "note": "Merge notes that climb a scale, a booster hit, a blocked buzz, vibrations and a synthesized loop that adds layers with the streak. It starts after the first touch. The music code ran without errors but was not auditioned by ear, so the mix is untested." },
+    "cliffhanger-end": { "status": "yes", "note": "Stars and a counting score, then a teaser about a 256 goal in Level 2 and a pulsing PLAY LEVEL 2 button. Level 2 is a teaser: the button goes to the store link." },
+    "measured": { "status": "yes", "note": "Events include demo_move, first_move, streak, milestone and booster use, all listed on this page." }
   },
   "stack": ["TypeScript", "Three.js", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
   "source": "https://github.com/Nain9Dev/playables/tree/main/games/merge-pop",
