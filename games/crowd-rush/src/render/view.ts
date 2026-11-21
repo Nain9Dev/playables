@@ -2,6 +2,7 @@ import {
   AdditiveBlending,
   AmbientLight,
   BoxGeometry,
+  BufferAttribute,
   BufferGeometry,
   CanvasTexture,
   Color,
@@ -14,7 +15,6 @@ import {
   Group,
   IcosahedronGeometry,
   InstancedMesh,
-  Material,
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
@@ -30,9 +30,11 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { MOTION, gateLabel, isPositive, mulberry32, type Gate, type Level } from "../game/rules.ts";
 
 const MAX_VISIBLE = 160;
+const MAX_SPARKS = 160;
 const TRAIL_RUNNERS = 36;
 const STREAKS = 36;
 const GOLDEN_ANGLE = 2.399963;
@@ -52,9 +54,17 @@ interface GateVisual {
 }
 
 interface Spark {
-  mesh: Mesh<BoxGeometry, MeshLambertMaterial>;
-  velocity: Vector3;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  rx: number;
+  ry: number;
+  size: number;
   life: number;
+  color: Color;
 }
 
 interface Ring {
@@ -71,11 +81,42 @@ interface PickupSlot {
   taken: boolean;
 }
 
-interface SawVisual {
-  group: Group;
-  blade: Mesh;
-  warn: Mesh<RingGeometry, MeshBasicMaterial>;
+interface SawSlot {
+  x: number;
+  z: number;
   hit: number;
+  angle: number;
+}
+
+function mergeSimple(parts: BufferGeometry[]): BufferGeometry {
+  const prepared = parts.map((part) => (part.index ? part.toNonIndexed() : part.clone()));
+  const merged = mergeGeometries(prepared, false);
+  for (const part of parts) part.dispose();
+  for (const part of prepared) part.dispose();
+  if (!merged) throw new Error("failed to merge geometries");
+  return merged;
+}
+
+function mergeColored(parts: { geometry: BufferGeometry; color: number }[]): BufferGeometry {
+  const tint = new Color();
+  const prepared = parts.map(({ geometry, color }) => {
+    const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+    const pos = g.getAttribute("position");
+    const colors = new Float32Array(pos.count * 3);
+    tint.setHex(color);
+    for (let i = 0; i < pos.count; i += 1) {
+      colors[i * 3] = tint.r;
+      colors[i * 3 + 1] = tint.g;
+      colors[i * 3 + 2] = tint.b;
+    }
+    g.setAttribute("color", new BufferAttribute(colors, 3));
+    return g;
+  });
+  const merged = mergeGeometries(prepared, false);
+  for (const { geometry } of parts) geometry.dispose();
+  for (const g of prepared) g.dispose();
+  if (!merged) throw new Error("failed to merge colored geometries");
+  return merged;
 }
 
 function canvasTexture(width: number, height: number, draw: (context: CanvasRenderingContext2D) => void): CanvasTexture {
@@ -89,17 +130,19 @@ function canvasTexture(width: number, height: number, draw: (context: CanvasRend
   return texture;
 }
 
-/** Draw a gate label on a small canvas. The text is the only "asset" and it is generated. */
-function labelTexture(text: string): CanvasTexture {
-  return canvasTexture(256, 256, (context) => {
+/** Draw both gate labels for a row on a single atlas canvas so a row uses one draw call. */
+function rowLabelTexture(left: string, right: string): CanvasTexture {
+  return canvasTexture(512, 256, (context) => {
     context.font = "800 150px system-ui, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineWidth = 14;
     context.strokeStyle = "rgba(10, 20, 60, 0.6)";
-    context.strokeText(text, 128, 138);
     context.fillStyle = "#ffffff";
-    context.fillText(text, 128, 138);
+    for (const [text, x] of [[left, 128], [right, 384]] as const) {
+      context.strokeText(text, x, 138);
+      context.fillText(text, x, 138);
+    }
   });
 }
 
@@ -209,16 +252,17 @@ export class RunView {
   private readonly playerHead: InstancedMesh;
   private readonly trail: InstancedMesh;
   private readonly streaks: InstancedMesh;
-  private readonly sparkGeometry = new BoxGeometry(1, 1, 1);
-  private readonly sparkMaterials = new Map<number, MeshLambertMaterial>();
+  private readonly sparkMesh: InstancedMesh;
   private readonly sparks: Spark[] = [];
   private readonly rings: Ring[] = [];
   private readonly ringGeometry = new RingGeometry(0.6, 0.8, 28);
   private readonly gates: GateVisual[] = [];
   private pickupMeshes: { coin: InstancedMesh; gem: InstancedMesh; recruitBody: InstancedMesh; recruitHead: InstancedMesh } | null = null;
   private pickupSlots: PickupSlot[] = [];
-  private sawMeshes: SawVisual[] = [];
-  private flags: Mesh[] = [];
+  private sawMeshes: { blades: InstancedMesh; cores: InstancedMesh; warns: InstancedMesh; warnMaterial: MeshBasicMaterial } | null = null;
+  private sawSlots: SawSlot[] = [];
+  private flagMesh: InstancedMesh | null = null;
+  private flagSpots: { x: number; z: number }[] = [];
   private boss: Group | null = null;
   private bossArms: Group[] = [];
   private bossMaterials: MeshLambertMaterial[] = [];
@@ -268,7 +312,12 @@ export class RunView {
       new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }),
       STREAKS,
     );
-    for (const mesh of [this.trail, this.streaks]) {
+    this.sparkMesh = new InstancedMesh(
+      new BoxGeometry(1, 1, 1),
+      new MeshLambertMaterial({ color: 0xffffff, emissive: 0x333333 }),
+      MAX_SPARKS,
+    );
+    for (const mesh of [this.trail, this.streaks, this.sparkMesh]) {
       mesh.frustumCulled = false;
       mesh.count = 0;
       this.scene.add(mesh);
@@ -294,6 +343,9 @@ export class RunView {
     const roadWidth = MOTION.halfRoad * 2 + 1.6;
     const bounds = [start, level.bossZ / 2, level.bossZ - 6, start + length];
 
+    const railGeos: BufferGeometry[] = [];
+    const glowParts: { geometry: BufferGeometry; color: number }[] = [];
+
     for (let zone = 0; zone < 3; zone += 1) {
       const from = bounds[zone] ?? 0;
       const to = bounds[zone + 1] ?? 0;
@@ -309,20 +361,28 @@ export class RunView {
 
       const grass = groundTexture(colors.ground);
       grass.repeat.set(1, span / 6);
-      const strip = new MeshBasicMaterial({ color: colors.accent });
+      const groundGeos: BufferGeometry[] = [];
       for (const side of [-1, 1]) {
-        const ground = new Mesh(new PlaneGeometry(70, span), new MeshLambertMaterial({ map: grass }));
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.set(side * (roadWidth / 2 + 35), 0, from + span / 2);
-        this.scene.add(ground);
+        const groundGeo = new PlaneGeometry(70, span);
+        groundGeo.rotateX(-Math.PI / 2);
+        groundGeo.translate(side * (roadWidth / 2 + 35), 0, from + span / 2);
+        groundGeos.push(groundGeo);
 
-        const rail = new Mesh(new BoxGeometry(0.3, 0.5, span), new MeshLambertMaterial({ color: 0xffffff }));
-        rail.position.set(side * (MOTION.halfRoad + 1.1), 0.25, from + span / 2);
-        const glow = new Mesh(new BoxGeometry(0.32, 0.08, span), strip);
-        glow.position.set(side * (MOTION.halfRoad + 1.1), 0.52, from + span / 2);
-        this.scene.add(rail, glow);
+        const railGeo = new BoxGeometry(0.3, 0.5, span);
+        railGeo.translate(side * (MOTION.halfRoad + 1.1), 0.25, from + span / 2);
+        railGeos.push(railGeo);
+
+        const glowGeo = new BoxGeometry(0.32, 0.08, span);
+        glowGeo.translate(side * (MOTION.halfRoad + 1.1), 0.52, from + span / 2);
+        glowParts.push({ geometry: glowGeo, color: colors.accent });
       }
+      this.scene.add(new Mesh(mergeSimple(groundGeos), new MeshLambertMaterial({ map: grass })));
     }
+
+    this.scene.add(
+      new Mesh(mergeSimple(railGeos), new MeshLambertMaterial({ color: 0xffffff })),
+      new Mesh(mergeColored(glowParts), new MeshBasicMaterial({ vertexColors: true })),
+    );
 
     this.buildScenery(level, length);
     this.buildGates(level);
@@ -401,84 +461,151 @@ export class RunView {
       poles.setMatrixAt(i, this.dummy.matrix);
     });
     this.scene.add(poles);
-    this.flags = flagSpots.map((flag) => {
-      const geometry = new PlaneGeometry(0.9, 0.5);
-      geometry.translate(0.45, 0, 0);
-      const cloth = new Mesh(geometry, new MeshBasicMaterial({ color: (ZONES[flag.zone] ?? ZONES[0]).accent, side: DoubleSide }));
-      cloth.position.set(flag.x, 4.9, flag.z);
-      this.scene.add(cloth);
-      return cloth;
+    const flagGeo = new PlaneGeometry(0.9, 0.5);
+    flagGeo.translate(0.45, 0, 0);
+    const flagMesh = new InstancedMesh(
+      flagGeo,
+      new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide }),
+      flagSpots.length,
+    );
+    flagMesh.frustumCulled = false;
+    this.flagSpots = flagSpots.map((flag, i) => {
+      tint.setHex((ZONES[flag.zone] ?? ZONES[0]).accent);
+      flagMesh.setColorAt(i, tint);
+      this.dummy.position.set(flag.x, 4.9, flag.z);
+      this.dummy.rotation.set(0, 0, 0);
+      this.dummy.scale.set(1, 1, 1);
+      this.dummy.updateMatrix();
+      flagMesh.setMatrixAt(i, this.dummy.matrix);
+      return { x: flag.x, z: flag.z };
     });
+    if (flagMesh.instanceColor) flagMesh.instanceColor.needsUpdate = true;
+    this.scene.add(flagMesh);
+    this.flagMesh = flagMesh;
 
     // Far hills give the horizon some depth.
     const hillGeo = new ConeGeometry(1, 1, 7);
+    const hillSpecs: { x: number; y: number; z: number; sx: number; sy: number; sz: number; color: number }[] = [];
     for (let z = 0; z < length; z += 26) {
       for (const side of [-1, 1]) {
         const h = 9 + rand() * 12;
-        const hill = new Mesh(hillGeo, new MeshLambertMaterial({ color: (ZONES[this.zoneIndex(z)] ?? ZONES[0]).foliage, flatShading: true }));
-        hill.scale.set(10 + rand() * 8, h, 10 + rand() * 8);
-        hill.position.set(side * (34 + rand() * 18), h / 2 - 1, z + rand() * 10);
-        this.scene.add(hill);
+        hillSpecs.push({
+          sx: 10 + rand() * 8,
+          sy: h,
+          sz: 10 + rand() * 8,
+          x: side * (34 + rand() * 18),
+          y: h / 2 - 1,
+          z: z + rand() * 10,
+          color: (ZONES[this.zoneIndex(z)] ?? ZONES[0]).foliage,
+        });
       }
     }
+    const hills = new InstancedMesh(
+      hillGeo,
+      new MeshLambertMaterial({ color: 0xffffff, flatShading: true }),
+      hillSpecs.length,
+    );
+    hills.frustumCulled = false;
+    hillSpecs.forEach((hill, i) => {
+      this.dummy.position.set(hill.x, hill.y, hill.z);
+      this.dummy.rotation.set(0, 0, 0);
+      this.dummy.scale.set(hill.sx, hill.sy, hill.sz);
+      this.dummy.updateMatrix();
+      hills.setMatrixAt(i, this.dummy.matrix);
+      tint.setHex(hill.color);
+      hills.setColorAt(i, tint);
+    });
+    if (hills.instanceColor) hills.instanceColor.needsUpdate = true;
+    this.dummy.scale.setScalar(1);
+    this.scene.add(hills);
   }
 
   private buildGates(level: Level): void {
     const glow = glowTexture();
-    const postGeo = new BoxGeometry(0.26, 3.7, 0.26);
-    const beamGeo = new BoxGeometry(MOTION.halfRoad - 0.1, 0.28, 0.3);
-    const panelGeo = new BoxGeometry(MOTION.halfRoad - 0.5, 3.2, 0.2);
     for (const row of level.rows) {
       const visual: GateVisual = { fadeables: [], baseOpacity: [], fade: 0 };
-      const sides: [number, Gate][] = [
-        [-MOTION.halfRoad / 2 - 0.35, row.left],
-        [MOTION.halfRoad / 2 + 0.35, row.right],
+      const sides: [number, Gate, number][] = [
+        [-MOTION.halfRoad / 2 - 0.35, row.left, 0],
+        [MOTION.halfRoad / 2 + 0.35, row.right, 0.5],
       ];
-      for (const [x, gate] of sides) {
+      const frameParts: { geometry: BufferGeometry; color: number }[] = [];
+      const padParts: { geometry: BufferGeometry; color: number }[] = [];
+      const haloParts: { geometry: BufferGeometry; color: number }[] = [];
+      const panelParts: { geometry: BufferGeometry; color: number }[] = [];
+      const labelGeos: BufferGeometry[] = [];
+
+      for (const [x, gate, uOffset] of sides) {
         const good = isPositive(gate);
         const color = good ? 0x2f7bff : 0xff3b4d;
-        // The frame is transparent so it fades with the panel once the crowd is through.
-        const frame = new MeshBasicMaterial({ color: good ? 0x7cc4ff : 0xff8794, transparent: true, opacity: 0.95 });
-        const frameParts: Mesh<BufferGeometry, MeshBasicMaterial>[] = [];
+        const frameColor = good ? 0x7cc4ff : 0xff8794;
+
         for (const edge of [-1, 1]) {
-          const post = new Mesh(postGeo, frame);
-          post.position.set(x + edge * (MOTION.halfRoad / 2 - 0.1), 1.85, row.z);
-          frameParts.push(post);
+          const post = new BoxGeometry(0.26, 3.7, 0.26);
+          post.translate(x + edge * (MOTION.halfRoad / 2 - 0.1), 1.85, row.z);
+          frameParts.push({ geometry: post, color: frameColor });
         }
-        const beam = new Mesh(beamGeo, frame);
-        beam.position.set(x, 3.75, row.z);
-        frameParts.push(beam);
-        this.scene.add(...frameParts);
+        const beam = new BoxGeometry(MOTION.halfRoad - 0.1, 0.28, 0.3);
+        beam.translate(x, 3.75, row.z);
+        frameParts.push({ geometry: beam, color: frameColor });
 
         // A tinted pad on the road shows the lane before the gate is close.
-        const pad = new Mesh(
-          new PlaneGeometry(MOTION.halfRoad - 0.2, 4),
-          new MeshBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false }),
-        );
-        pad.rotation.x = -Math.PI / 2;
-        pad.position.set(x, 0.03, row.z - 1.2);
-        this.scene.add(pad);
+        const padGeo = new PlaneGeometry(MOTION.halfRoad - 0.2, 4);
+        padGeo.rotateX(-Math.PI / 2);
+        padGeo.translate(x, 0.03, row.z - 1.2);
+        padParts.push({ geometry: padGeo, color });
 
-        const halo = new Mesh(
-          new PlaneGeometry(MOTION.halfRoad + 1.6, 5.6),
-          new MeshBasicMaterial({ map: glow, color, transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false }),
-        );
-        halo.position.set(x, 2.1, row.z + 0.15);
-        halo.rotation.y = Math.PI;
+        const haloGeo = new PlaneGeometry(MOTION.halfRoad + 1.6, 5.6);
+        haloGeo.rotateY(Math.PI);
+        haloGeo.translate(x, 2.1, row.z + 0.15);
+        haloParts.push({ geometry: haloGeo, color });
 
-        const panel = new Mesh(panelGeo, new MeshBasicMaterial({ color, transparent: true, opacity: 0.55 }));
-        panel.position.set(x, 1.95, row.z);
-        const label = new Mesh(
-          new PlaneGeometry(2.4, 2.4),
-          new MeshBasicMaterial({ map: labelTexture(gateLabel(gate)), transparent: true, side: DoubleSide }),
-        );
-        label.position.set(x, 2.0, row.z - 0.2);
-        label.rotation.y = Math.PI;
-        this.scene.add(halo, panel, label);
-        for (const mesh of [halo, panel, label, pad, ...frameParts]) {
-          visual.fadeables.push(mesh);
-          visual.baseOpacity.push(mesh.material.opacity);
-        }
+        const panelGeo = new BoxGeometry(MOTION.halfRoad - 0.5, 3.2, 0.2);
+        panelGeo.translate(x, 1.95, row.z);
+        panelParts.push({ geometry: panelGeo, color });
+
+        const labelGeo = new PlaneGeometry(2.4, 2.4);
+        const uv = labelGeo.getAttribute("uv");
+        for (let i = 0; i < uv.count; i += 1) uv.setX(i, uv.getX(i) * 0.5 + uOffset);
+        labelGeo.rotateY(Math.PI);
+        labelGeo.translate(x, 2.0, row.z - 0.2);
+        labelGeos.push(labelGeo);
+      }
+
+      const frames = new Mesh(
+        mergeColored(frameParts),
+        new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95 }),
+      );
+      const pads = new Mesh(
+        mergeColored(padParts),
+        new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.28, depthWrite: false }),
+      );
+      const halos = new Mesh(
+        mergeColored(haloParts),
+        new MeshBasicMaterial({
+          map: glow,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.55,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      const panels = new Mesh(
+        mergeColored(panelParts),
+        new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55 }),
+      );
+      const labels = new Mesh(
+        mergeSimple(labelGeos),
+        new MeshBasicMaterial({
+          map: rowLabelTexture(gateLabel(row.left), gateLabel(row.right)),
+          transparent: true,
+          side: DoubleSide,
+        }),
+      );
+      this.scene.add(frames, pads, halos, panels, labels);
+      for (const mesh of [halos, panels, labels, pads, frames]) {
+        visual.fadeables.push(mesh);
+        visual.baseOpacity.push(mesh.material.opacity);
       }
       this.gates.push(visual);
     }
@@ -486,12 +613,12 @@ export class RunView {
 
   private buildHalfwayArch(level: Level): void {
     const z = level.bossZ / 2;
-    const material = new MeshBasicMaterial({ color: 0xffe14d });
-    for (const side of [-1, 1]) {
-      const post = new Mesh(new BoxGeometry(0.5, 5, 0.5), material);
-      post.position.set(side * (MOTION.halfRoad + 0.9), 2.5, z);
-      this.scene.add(post);
-    }
+    const postGeos = [-1, 1].map((side) => {
+      const geo = new BoxGeometry(0.5, 5, 0.5);
+      geo.translate(side * (MOTION.halfRoad + 0.9), 2.5, z);
+      return geo;
+    });
+    this.scene.add(new Mesh(mergeSimple(postGeos), new MeshBasicMaterial({ color: 0xffe14d })));
     const banner = new Mesh(
       new PlaneGeometry(MOTION.halfRoad * 2 + 1.6, 1.1),
       new MeshBasicMaterial({ map: bannerTexture("HALFWAY"), side: DoubleSide }),
@@ -525,27 +652,29 @@ export class RunView {
   }
 
   private buildSaws(level: Level): void {
-    const geometry = sawGeometry();
-    const steel = new MeshLambertMaterial({ color: 0xd6deee, emissive: 0x1b2540 });
-    const hub = new MeshLambertMaterial({ color: 0xff3b4d, emissive: 0x991a28 });
-    this.sawMeshes = (level.saws ?? []).map((saw) => {
-      const group = new Group();
-      const blade = new Mesh(geometry, steel);
-      const core = new Mesh(new CylinderGeometry(0.16, 0.16, 0.2, 10), hub);
-      core.rotation.x = Math.PI / 2;
-      blade.add(core);
-      group.add(blade);
-      group.position.set(saw.x * MOTION.halfRoad, 0.66, saw.z);
-      this.scene.add(group);
-      const warn = new Mesh(
-        new RingGeometry(0.75, 1.0, 24),
-        new MeshBasicMaterial({ color: 0xff3b4d, transparent: true, opacity: 0.6, side: DoubleSide, depthWrite: false }),
-      );
-      warn.rotation.x = -Math.PI / 2;
-      warn.position.set(saw.x * MOTION.halfRoad, 0.04, saw.z);
-      this.scene.add(warn);
-      return { group, blade, warn, hit: 0 };
+    const saws = level.saws ?? [];
+    this.sawSlots = saws.map((saw) => ({ x: saw.x * MOTION.halfRoad, z: saw.z, hit: 0, angle: 0 }));
+    if (saws.length === 0) return;
+    const bladeGeo = sawGeometry();
+    const coreGeo = new CylinderGeometry(0.16, 0.16, 0.2, 10);
+    coreGeo.rotateX(Math.PI / 2);
+    const warnGeo = new RingGeometry(0.75, 1.0, 24);
+    warnGeo.rotateX(-Math.PI / 2);
+    const warnMaterial = new MeshBasicMaterial({
+      color: 0xff3b4d,
+      transparent: true,
+      opacity: 0.6,
+      side: DoubleSide,
+      depthWrite: false,
     });
+    const blades = new InstancedMesh(bladeGeo, new MeshLambertMaterial({ color: 0xd6deee, emissive: 0x1b2540 }), saws.length);
+    const cores = new InstancedMesh(coreGeo, new MeshLambertMaterial({ color: 0xff3b4d, emissive: 0x991a28 }), saws.length);
+    const warns = new InstancedMesh(warnGeo, warnMaterial, saws.length);
+    for (const mesh of [blades, cores, warns]) {
+      mesh.frustumCulled = false;
+      this.scene.add(mesh);
+    }
+    this.sawMeshes = { blades, cores, warns, warnMaterial };
   }
 
   private buildBoss(level: Level): void {
@@ -568,23 +697,33 @@ export class RunView {
     const horn = new MeshLambertMaterial({ color: 0xf4ecd8 });
 
     const boss = new Group();
-    const add = (geometry: BufferGeometry, material: Material, x: number, y: number, z: number): Mesh => {
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(x, y, z);
-      boss.add(mesh);
-      return mesh;
+    const placed = (geo: BufferGeometry, x: number, y: number, z: number, rz = 0): BufferGeometry => {
+      if (rz !== 0) geo.rotateZ(rz);
+      geo.translate(x, y, z);
+      return geo;
     };
-    add(new BoxGeometry(2.4, 2.6, 1.6), body, 0, 2.5, 0);
-    add(new BoxGeometry(1.7, 1.5, 0.12), belly, 0, 2.3, -0.82);
-    add(new BoxGeometry(1.6, 1.4, 1.4), body, 0, 4.7, 0);
-    add(new BoxGeometry(0.34, 0.24, 0.1), eyes, -0.38, 4.85, -0.72);
-    add(new BoxGeometry(0.34, 0.24, 0.1), eyes, 0.38, 4.85, -0.72);
-    add(new BoxGeometry(1.0, 0.18, 0.1), dark, 0, 4.3, -0.72);
-    add(new BoxGeometry(1.7, 0.2, 0.12), dark, 0, 5.2, -0.72);
+    boss.add(
+      new Mesh(mergeSimple([placed(new BoxGeometry(2.4, 2.6, 1.6), 0, 2.5, 0), placed(new BoxGeometry(1.6, 1.4, 1.4), 0, 4.7, 0)]), body),
+      new Mesh(placed(new BoxGeometry(1.7, 1.5, 0.12), 0, 2.3, -0.82), belly),
+      new Mesh(mergeSimple([placed(new BoxGeometry(0.34, 0.24, 0.1), -0.38, 4.85, -0.72), placed(new BoxGeometry(0.34, 0.24, 0.1), 0.38, 4.85, -0.72)]), eyes),
+      new Mesh(
+        mergeSimple([
+          placed(new BoxGeometry(1.0, 0.18, 0.1), 0, 4.3, -0.72),
+          placed(new BoxGeometry(1.7, 0.2, 0.12), 0, 5.2, -0.72),
+          placed(new BoxGeometry(0.85, 1.4, 0.95), -0.6, 0.7, 0),
+          placed(new BoxGeometry(0.85, 1.4, 0.95), 0.6, 0.7, 0),
+        ]),
+        dark,
+      ),
+      new Mesh(
+        mergeSimple([
+          placed(new ConeGeometry(0.28, 1.0, 6), -0.62, 5.8, 0, 0.3),
+          placed(new ConeGeometry(0.28, 1.0, 6), 0.62, 5.8, 0, -0.3),
+        ]),
+        horn,
+      ),
+    );
     for (const side of [-1, 1]) {
-      const cone = add(new ConeGeometry(0.28, 1.0, 6), horn, side * 0.62, 5.8, 0);
-      cone.rotation.z = -side * 0.3;
-      add(new BoxGeometry(0.85, 1.4, 0.95), dark, side * 0.6, 0.7, 0);
       const arm = new Group();
       arm.position.set(side * 1.7, 3.5, 0);
       const upper = new Mesh(new BoxGeometry(0.7, 1.9, 0.7), body);
@@ -661,7 +800,7 @@ export class RunView {
 
   /** Pop a saw that was hit. */
   hitSaw(index: number): void {
-    const saw = this.sawMeshes[index];
+    const saw = this.sawSlots[index];
     if (saw) saw.hit = 0.0001;
   }
 
@@ -674,29 +813,25 @@ export class RunView {
     this.shake = Math.max(this.shake, strength);
   }
 
-  private sparkMaterial(color: number): MeshLambertMaterial {
-    let material = this.sparkMaterials.get(color);
-    if (!material) {
-      material = new MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.35 });
-      this.sparkMaterials.set(color, material);
-    }
-    return material;
-  }
-
   /** Burst of small cubes at a point. */
   burst(x: number, z: number, color: number, amount = 14, y = 0.8): void {
+    const tint = new Color(color);
     for (let i = 0; i < amount; i += 1) {
-      const size = 0.1 + Math.random() * 0.14;
-      const mesh = new Mesh(this.sparkGeometry, this.sparkMaterial(color));
-      mesh.scale.set(size, size, size);
-      mesh.position.set(x, y, z);
-      this.scene.add(mesh);
+      if (this.sparks.length >= MAX_SPARKS) this.sparks.shift();
       const angle = Math.random() * Math.PI * 2;
       const speed = 2 + Math.random() * 4;
       this.sparks.push({
-        mesh,
-        velocity: new Vector3(Math.cos(angle) * speed, 3 + Math.random() * 4, Math.sin(angle) * speed),
+        x,
+        y,
+        z,
+        vx: Math.cos(angle) * speed,
+        vy: 3 + Math.random() * 4,
+        vz: Math.sin(angle) * speed,
+        rx: 0,
+        ry: 0,
+        size: 0.1 + Math.random() * 0.14,
         life: 0.9,
+        color: tint,
       });
     }
   }
@@ -737,8 +872,8 @@ export class RunView {
 
   /** Clear transient effects and show every gate, pickup and saw again, so a new run starts clean. */
   reset(): void {
-    for (const spark of this.sparks) this.scene.remove(spark.mesh);
     this.sparks.length = 0;
+    this.sparkMesh.count = 0;
     for (const ring of this.rings) {
       this.scene.remove(ring.mesh);
       ring.mesh.material.dispose();
@@ -752,7 +887,7 @@ export class RunView {
       });
     }
     for (const slot of this.pickupSlots) slot.taken = false;
-    for (const saw of this.sawMeshes) saw.hit = 0;
+    for (const saw of this.sawSlots) saw.hit = 0;
     this.fovKick = 0;
     this.shake = 0;
     this.boostAmount = 0;
@@ -929,29 +1064,62 @@ export class RunView {
   }
 
   private updateSaws(dt: number): void {
-    for (const saw of this.sawMeshes) {
+    const meshes = this.sawMeshes;
+    if (!meshes) return;
+    meshes.warnMaterial.opacity = 0.35 + (Math.sin(this.clock * 7) + 1) * 0.2;
+    this.sawSlots.forEach((saw, i) => {
       if (saw.hit > 0) {
         saw.hit += dt;
-        const scale = Math.max(0, 1 - saw.hit * 4);
-        saw.group.scale.setScalar(Math.max(scale, 0.0001));
-        saw.group.visible = scale > 0;
-        saw.warn.visible = scale > 0;
+        const scale = Math.max(0.0001, 1 - saw.hit * 4);
+        this.dummy.position.set(saw.x, 0.66, saw.z);
+        this.dummy.rotation.set(0, 0, saw.angle);
+        this.dummy.scale.setScalar(scale);
+        this.dummy.updateMatrix();
+        meshes.blades.setMatrixAt(i, this.dummy.matrix);
+        meshes.cores.setMatrixAt(i, this.dummy.matrix);
+
+        this.dummy.position.set(saw.x, 0.04, saw.z);
+        this.dummy.rotation.set(0, 0, 0);
+        this.dummy.scale.setScalar(scale > 0.001 ? 1 : 0.0001);
+        this.dummy.updateMatrix();
+        meshes.warns.setMatrixAt(i, this.dummy.matrix);
       } else {
-        saw.group.scale.setScalar(1);
-        saw.group.visible = true;
-        saw.warn.visible = true;
-        saw.blade.rotation.z -= dt * 16;
-        saw.group.position.y = 0.66 + Math.sin(this.clock * 5 + saw.group.position.z) * 0.03;
-        saw.warn.material.opacity = 0.35 + (Math.sin(this.clock * 7) + 1) * 0.2;
+        saw.angle -= dt * 16;
+        const y = 0.66 + Math.sin(this.clock * 5 + saw.z) * 0.03;
+        this.dummy.position.set(saw.x, y, saw.z);
+        this.dummy.rotation.set(0, 0, saw.angle);
+        this.dummy.scale.setScalar(1);
+        this.dummy.updateMatrix();
+        meshes.blades.setMatrixAt(i, this.dummy.matrix);
+        meshes.cores.setMatrixAt(i, this.dummy.matrix);
+
+        this.dummy.position.set(saw.x, 0.04, saw.z);
+        this.dummy.rotation.set(0, 0, 0);
+        this.dummy.scale.setScalar(1);
+        this.dummy.updateMatrix();
+        meshes.warns.setMatrixAt(i, this.dummy.matrix);
       }
-    }
+    });
+    this.dummy.scale.setScalar(1);
+    this.dummy.rotation.set(0, 0, 0);
+    meshes.blades.instanceMatrix.needsUpdate = true;
+    meshes.cores.instanceMatrix.needsUpdate = true;
+    meshes.warns.instanceMatrix.needsUpdate = true;
   }
 
   private updateFlags(): void {
-    this.flags.forEach((flag, i) => {
-      flag.rotation.y = Math.sin(this.clock * 5 + i) * 0.5;
-      flag.scale.x = 0.85 + Math.sin(this.clock * 7 + i * 1.7) * 0.15;
+    const mesh = this.flagMesh;
+    if (!mesh) return;
+    this.flagSpots.forEach((spot, i) => {
+      this.dummy.position.set(spot.x, 4.9, spot.z);
+      this.dummy.rotation.set(0, Math.sin(this.clock * 5 + i) * 0.5, 0);
+      this.dummy.scale.set(0.85 + Math.sin(this.clock * 7 + i * 1.7) * 0.15, 1, 1);
+      this.dummy.updateMatrix();
+      mesh.setMatrixAt(i, this.dummy.matrix);
     });
+    this.dummy.scale.setScalar(1);
+    this.dummy.rotation.set(0, 0, 0);
+    mesh.instanceMatrix.needsUpdate = true;
   }
 
   private updateEffects(dt: number): void {
@@ -959,14 +1127,31 @@ export class RunView {
       const spark = this.sparks[i];
       if (!spark) continue;
       spark.life -= dt;
-      spark.velocity.y -= 18 * dt;
-      spark.mesh.position.addScaledVector(spark.velocity, dt);
-      spark.mesh.rotation.x += dt * 8;
-      spark.mesh.rotation.y += dt * 6;
       if (spark.life <= 0) {
-        this.scene.remove(spark.mesh);
         this.sparks.splice(i, 1);
+        continue;
       }
+      spark.vy -= 18 * dt;
+      spark.x += spark.vx * dt;
+      spark.y += spark.vy * dt;
+      spark.z += spark.vz * dt;
+      spark.rx += dt * 8;
+      spark.ry += dt * 6;
+    }
+    this.sparkMesh.count = this.sparks.length;
+    if (this.sparks.length > 0) {
+      this.sparks.forEach((spark, i) => {
+        this.dummy.position.set(spark.x, spark.y, spark.z);
+        this.dummy.rotation.set(spark.rx, spark.ry, 0);
+        this.dummy.scale.setScalar(spark.size);
+        this.dummy.updateMatrix();
+        this.sparkMesh.setMatrixAt(i, this.dummy.matrix);
+        this.sparkMesh.setColorAt(i, spark.color);
+      });
+      this.dummy.scale.setScalar(1);
+      this.dummy.rotation.set(0, 0, 0);
+      this.sparkMesh.instanceMatrix.needsUpdate = true;
+      if (this.sparkMesh.instanceColor) this.sparkMesh.instanceColor.needsUpdate = true;
     }
     for (let i = this.rings.length - 1; i >= 0; i -= 1) {
       const ring = this.rings[i];
