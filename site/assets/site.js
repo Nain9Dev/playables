@@ -22,9 +22,23 @@
 
   var frames = [];
 
+  // Only one playable runs at a time: starting one puts the others back behind their cover,
+  // so sound and CPU belong to what the visitor is playing.
+  function unmountOthers(keep) {
+    document.querySelectorAll(".phone").forEach(function (other) {
+      if (other === keep) return;
+      var running = other.querySelector("iframe");
+      if (!running) return;
+      frames = frames.filter(function (frame) { return frame !== running; });
+      running.remove();
+      if (other._cover) other.querySelector(".phone-screen").appendChild(other._cover);
+    });
+  }
+
   function mount(phone) {
     var screen = phone.querySelector(".phone-screen");
     if (!screen || screen.querySelector("iframe")) return screen && screen.querySelector("iframe");
+    unmountOthers(phone);
     var frame = document.createElement("iframe");
     frame.src = phone.getAttribute("data-src");
     frame.title = phone.getAttribute("data-title") || "Playable ad";
@@ -33,7 +47,10 @@
     screen.appendChild(frame);
     frames.push(frame);
     var cover = phone.querySelector(".phone-play");
-    if (cover) cover.remove();
+    if (cover) {
+      phone._cover = cover;
+      cover.remove();
+    }
     return frame;
   }
 
@@ -72,12 +89,26 @@
     var clear = document.querySelector(".console-clear");
     var count = 0;
     var first = null;
+    var statFirst = document.getElementById("stat-first");
+    var statEvents = document.getElementById("stat-events");
+    var statSpan = document.getElementById("stat-span");
+    var sawFirstInput = false;
+    var runEvents = 0;
+
+    function resetStats() {
+      sawFirstInput = false;
+      runEvents = 0;
+      if (statFirst) statFirst.textContent = "-";
+      if (statEvents) statEvents.textContent = "0";
+      if (statSpan) statSpan.textContent = "-";
+    }
 
     if (clear) {
       clear.addEventListener("click", function () {
         log.innerHTML = '<li class="console-empty">Log cleared. Play again to see new events.</li>';
         count = 0;
         first = null;
+        resetStats();
       });
     }
 
@@ -87,8 +118,22 @@
       if (!known || !data || data.source !== "playable" || typeof data.name !== "string") return;
 
       if (count === 0) log.innerHTML = "";
-      if (first === null) first = data.t;
+      // A new run (a fresh iframe) starts its own clock, so the numbers restart with its impression.
+      if (first === null || data.name === "impression") {
+        first = data.t;
+        resetStats();
+      }
       count += 1;
+
+      // Session numbers: the first event named first_* is the first input, as the ad measures it.
+      if (!sawFirstInput && data.name.indexOf("first_") === 0 && statFirst) {
+        sawFirstInput = true;
+        var ms = data.data && typeof data.data.ms === "number" ? data.data.ms : data.t - first;
+        statFirst.textContent = (ms / 1000).toFixed(2) + "s";
+      }
+      runEvents += 1;
+      if (statEvents) statEvents.textContent = String(runEvents);
+      if (statSpan) statSpan.textContent = ((data.t - first) / 1000).toFixed(1) + "s";
 
       var row = document.createElement("li");
       var time = document.createElement("span");

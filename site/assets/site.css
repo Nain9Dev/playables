@@ -94,6 +94,9 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
 .surface-deep .btn-ghost:hover { box-shadow: 6px 6px 0 var(--nain-green); }
 .btn:focus-visible, .phone-play:focus-visible, .phone-full:focus-visible { outline: 3px solid var(--nain-focus-ring); outline-offset: 3px; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--nain-s4); margin-top: var(--nain-s6); }
+/* A long label, such as a repository path, wraps instead of widening the page on phones. */
+.btn { max-width: 100%; overflow-wrap: anywhere; }
+.two-col > div { min-width: 0; }
 
 /* Hero */
 .hero { padding: var(--nain-s16) 0; }
@@ -208,6 +211,65 @@ p { margin: 0 0 var(--nain-s4); max-width: var(--nain-measure); }
 
 /* Fullscreen overlay used when the browser has no Fullscreen API (iOS Safari). */
 .fs-overlay { position: fixed; inset: 0; z-index: 9999; background: #000; }
+/* Hero fan: the featured playable in the middle, the next two flanking it. */
+.hero-phones { display: flex; justify-content: center; align-items: center; }
+.hero-phones .phone { flex: none; }
+.hero-phones .phone-side { width: 164px; opacity: 0.94; }
+.hero-phones .phone-side .phone-screen { border-width: 7px; border-radius: 28px; box-shadow: 8px 8px 0 var(--nain-brand-black); }
+.hero-phones .phone-side .phone-play span { font-size: 12px; padding: 10px 14px; }
+.hero-phones .phone-side .phone-full { display: none; }
+.hero-phones .phone-hero { width: 232px; z-index: 2; margin: 0 -22px; transform: translateY(-12px); }
+@media (max-width: 900px) {
+  .hero-phones .phone-side { display: none; }
+  .hero-phones .phone-hero { width: min(280px, 72vw); margin: 0; transform: none; }
+}
+
+/* Cards */
+.card .phone { transition: transform var(--nain-duration-smooth) var(--nain-ease-out); }
+.card:hover .phone { transform: translateY(-6px); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--nain-s3); }
+.card-head h3 { margin-bottom: var(--nain-s2); }
+.ring-wrap { display: flex; flex-direction: column; align-items: center; flex: none; color: var(--nain-text-primary); }
+.ring-wrap span { font-family: var(--nain-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+@media (prefers-reduced-motion: reduce) { .card .phone, .card:hover .phone { transition: none; transform: none; } }
+
+/* Detail page: sticky section nav, radar, session numbers, pager */
+section[id] { scroll-margin-top: 56px; }
+.subnav { position: sticky; top: 0; z-index: 30; background: var(--nain-bg-surface); border-bottom: 1px solid var(--nain-border-default); }
+.subnav-row { display: flex; gap: var(--nain-s6); overflow-x: auto; padding: var(--nain-s3) 0; font-family: var(--nain-font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: var(--nain-track-label); scrollbar-width: none; }
+.subnav a { text-decoration: none; white-space: nowrap; color: var(--nain-text-secondary); }
+.subnav a:hover, .subnav a:focus-visible { color: var(--nain-text-primary); text-decoration: underline; }
+
+.score-head { display: grid; grid-template-columns: 1fr minmax(260px, 360px); gap: var(--nain-s8); align-items: center; margin-bottom: var(--nain-s4); }
+@media (max-width: 800px) { .score-head { grid-template-columns: 1fr; } }
+.radar-wrap { display: flex; justify-content: center; }
+.radar { width: 100%; max-width: 360px; height: auto; --shape: var(--nain-blue); }
+[data-theme="dark"] .radar { --shape: var(--nain-green); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .radar { --shape: var(--nain-green); } }
+.radar-ring, .radar-axis { fill: none; stroke: var(--nain-border-default); stroke-width: 1; }
+.radar-shape { fill: color-mix(in srgb, var(--shape) 24%, transparent); stroke: var(--shape); stroke-width: 2; stroke-linejoin: round; }
+.radar-dot { stroke: var(--nain-bg-canvas); stroke-width: 1.5; }
+.radar-dot.yes { fill: var(--nain-green); }
+.radar-dot.partial { fill: #ffd24d; }
+.radar-dot.no { fill: var(--nain-red); }
+.radar-label { font: 500 9.5px var(--nain-font-mono); fill: var(--nain-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.live-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--nain-s3); margin-bottom: var(--nain-s4); }
+.live-stats div { background: var(--nain-bg-surface); border: 1px solid var(--nain-border-default); border-radius: var(--nain-radius-lg); padding: var(--nain-s3) var(--nain-s4); display: flex; flex-direction: column; }
+.live-stats b { font-size: 28px; line-height: 1.1; color: var(--nain-blue); font-variant-numeric: tabular-nums; }
+[data-theme="dark"] .live-stats b { color: var(--nain-green); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .live-stats b { color: var(--nain-green); } }
+.live-stats span { font-family: var(--nain-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: var(--nain-track-label); color: var(--nain-text-secondary); }
+
+.pager { border-top: 1px solid var(--nain-border-default); }
+.pager-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--nain-s6); padding: var(--nain-s8) 0; }
+@media (max-width: 640px) { .pager-row { grid-template-columns: 1fr; } .pager-link.none { display: none; } }
+.pager-link { display: flex; flex-direction: column; gap: var(--nain-s1); padding: var(--nain-s6); border: 2px solid var(--nain-border-default); border-radius: var(--nain-radius-lg); text-decoration: none; transition: transform var(--nain-duration-fast) var(--nain-ease-out), box-shadow var(--nain-duration-fast) var(--nain-ease-out); }
+.pager-link b { font-size: 26px; line-height: 1.1; }
+.pager-link.next { text-align: right; align-items: flex-end; }
+.pager-link.none { border: 0; }
+a.pager-link:hover, a.pager-link:focus-visible { transform: translate(-3px, -3px); box-shadow: var(--nain-shadow-btn-alt-hover); }
+
 /* Retention scorecard */
 .sub { display: block; font-weight: 400; font-size: 13px; line-height: 1.4; color: var(--nain-text-secondary); margin-top: 2px; }
 .table-score th[scope="row"], .table-matrix th[scope="row"] { min-width: 220px; font-weight: 700; }

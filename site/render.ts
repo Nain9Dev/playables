@@ -4,7 +4,7 @@
  */
 import type { Verdict } from "../kit/validate.ts";
 import type { PlayableMeta } from "./meta.ts";
-import { PRINCIPLES, STATUS_LABEL, tally, type Status } from "./principles.ts";
+import { PRINCIPLES, SHORT_LABEL, STATUS_LABEL, tally, type Status } from "./principles.ts";
 
 export interface SiteEntry {
   meta: PlayableMeta;
@@ -131,7 +131,7 @@ function footer(info: SiteInfo): string {
 }
 
 /** Phone frame with a lazy iframe. The game loads only after the first tap. */
-export function phone(entry: SiteEntry, root: string, size: "hero" | "card" = "card"): string {
+export function phone(entry: SiteEntry, root: string, size: "hero" | "card" | "side" = "card"): string {
   const { meta } = entry;
   const poster = entry.hasPoster
     ? `<img class="phone-poster" src="${root}posters/${esc(meta.slug)}.jpg" alt="Screenshot of ${esc(meta.title)}" loading="lazy">`
@@ -164,6 +164,55 @@ export function ruleTable(entry: SiteEntry): string {
     })
     .join("");
   return `<div class="table-wrap"><table class="table"><thead><tr><th>Result</th><th>Rule</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+const STATUS_VALUE: Record<Status, number> = { yes: 1, partial: 0.5, no: 0.08 };
+
+/** Small ring that shows how many principles a playable fully meets, for the cards. */
+export function scoreRing(yes: number, total: number, size = 54): string {
+  const radius = 21;
+  const circumference = 2 * Math.PI * radius;
+  const share = total > 0 ? yes / total : 0;
+  return `<svg class="ring" viewBox="0 0 54 54" width="${size}" height="${size}" role="img" aria-label="${yes} of ${total} retention principles met"><circle cx="27" cy="27" r="${radius}" fill="none" stroke="currentColor" stroke-opacity="0.18" stroke-width="5"/><circle cx="27" cy="27" r="${radius}" fill="none" stroke="var(--nain-green)" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(circumference * share).toFixed(1)} ${circumference.toFixed(1)}" transform="rotate(-90 27 27)"/><text x="27" y="31" text-anchor="middle" font-size="13" font-weight="800" fill="currentColor">${yes}</text></svg>`;
+}
+
+/** Radar chart of the twelve principles: full, half or almost no radius for yes, partial and no. */
+export function radar(entry: SiteEntry): string {
+  const cx = 160;
+  const cy = 150;
+  const radius = 92;
+  const count = PRINCIPLES.length;
+  const point = (index: number, scale: number): [number, number] => {
+    const angle = -Math.PI / 2 + (index / count) * Math.PI * 2;
+    return [cx + Math.cos(angle) * radius * scale, cy + Math.sin(angle) * radius * scale];
+  };
+  const fmt = ([x, y]: [number, number]): string => `${x.toFixed(1)},${y.toFixed(1)}`;
+
+  const rings = [0.5, 1]
+    .map((scale) => `<polygon class="radar-ring" points="${PRINCIPLES.map((_, i) => fmt(point(i, scale))).join(" ")}"/>`)
+    .join("");
+  const axes = PRINCIPLES.map((_, i) => `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${point(i, 1)[0].toFixed(1)}" y2="${point(i, 1)[1].toFixed(1)}"/>`).join("");
+  const values = PRINCIPLES.map((principle, i) => {
+    const status = entry.meta.scorecard[principle.id]?.status ?? "no";
+    return point(i, STATUS_VALUE[status]);
+  });
+  const dots = values.map(([x, y], i) => {
+    const status = entry.meta.scorecard[PRINCIPLES[i]?.id ?? ""]?.status ?? "no";
+    return `<circle class="radar-dot ${status}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4"/>`;
+  }).join("");
+  const labels = PRINCIPLES.map((principle, i) => {
+    const [x, y] = point(i, 1.2);
+    const anchor = x < cx - 8 ? "end" : x > cx + 8 ? "start" : "middle";
+    return `<text class="radar-label" x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="${anchor}">${esc(SHORT_LABEL[principle.id] ?? principle.title)}</text>`;
+  }).join("");
+  const { yes, partial, total } = tally(entry.meta.scorecard);
+
+  return `<svg class="radar" viewBox="0 0 320 300" role="img" aria-label="Retention radar of ${esc(entry.meta.title)}: ${yes} of ${total} principles fully met, ${partial} partial">${rings}${axes}<polygon class="radar-shape" points="${values.map(fmt).join(" ")}"/>${dots}${labels}</svg>`;
+}
+
+/** The previous and next live playable around `index`, for the pager at the end of a detail page. */
+export function neighbours<T>(list: readonly T[], index: number): { previous: T | null; next: T | null } {
+  return { previous: index > 0 ? (list[index - 1] ?? null) : null, next: index < list.length - 1 ? (list[index + 1] ?? null) : null };
 }
 
 function scoreBadge(status: Status): string {
@@ -216,8 +265,13 @@ export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
       (entry) => `<article class="card" id="${esc(entry.meta.slug)}">
   ${phone(entry, "./", "card")}
   <div class="card-body">
-    <p class="eyebrow">${esc(entry.meta.genre)}</p>
-    <h3>${esc(entry.meta.title)}</h3>
+    <div class="card-head">
+      <div>
+        <p class="eyebrow">${esc(entry.meta.genre)}</p>
+        <h3>${esc(entry.meta.title)}</h3>
+      </div>
+      <div class="ring-wrap" title="Retention principles fully met">${scoreRing(tally(entry.meta.scorecard).yes, PRINCIPLES.length)}<span>of ${PRINCIPLES.length}</span></div>
+    </div>
     <p>${esc(entry.meta.tagline)}</p>
     ${chips([formatBytes(entry.bytes), specBadge(entry), entry.meta.duration])}
     <a class="btn btn-ghost" href="./${esc(entry.meta.slug)}/">See the breakdown</a>
@@ -225,6 +279,12 @@ export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
 </article>`,
     )
     .join("\n");
+
+  // The featured playable sits in the middle and the next two flank it, so the hero shows range at a glance.
+  const fan = [live[1], live[0], live[2]]
+    .filter((candidate): candidate is SiteEntry => Boolean(candidate))
+    .map((candidate) => phone(candidate, "./", candidate === featured ? "hero" : "side"))
+    .join("");
 
   const body = `${header("./")}
 <main>
@@ -239,7 +299,7 @@ export function renderIndex(entries: SiteEntry[], info: SiteInfo): string {
         <a class="btn btn-line" href="#verified">See the spec check</a>
       </div>
     </div>
-    <div class="hero-phone">${phone(featured, "./", "hero")}</div>
+    <div class="hero-phones">${fan}</div>
   </div>
 </section>
 
@@ -375,8 +435,14 @@ Sitemap: ${info.siteUrl}sitemap.xml
 `;
 }
 
-export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
+export function renderDetail(entry: SiteEntry, info: SiteInfo, all: readonly SiteEntry[] = [entry]): string {
   const { meta } = entry;
+  const live = all.filter((candidate) => candidate.meta.status === "live").sort((a, b) => a.meta.order - b.meta.order);
+  const { previous, next } = neighbours(live, live.findIndex((candidate) => candidate.meta.slug === meta.slug));
+  const pagerLink = (target: SiteEntry | null, label: string, side: "prev" | "next"): string =>
+    target
+      ? `<a class="pager-link ${side}" href="../${esc(target.meta.slug)}/"><span class="eyebrow">${label}</span><b>${esc(target.meta.title)}</b><span class="muted">${esc(target.meta.tagline)}</span></a>`
+      : `<span class="pager-link ${side} none"></span>`;
 
   const levers = meta.levers
     .map(
@@ -407,7 +473,13 @@ export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
   </div>
 </section>
 
-<section class="section">
+<nav class="subnav" aria-label="On this page">
+  <div class="shell subnav-row">
+    <a href="#hook">Hook</a><a href="#levers">Levers</a><a href="#scorecard">Scorecard</a><a href="#telemetry">Telemetry</a><a href="#verified">Spec check</a>
+  </div>
+</nav>
+
+<section class="section" id="hook">
   <div class="shell two-col">
     <div>
       <p class="eyebrow">The hook</p>
@@ -422,7 +494,7 @@ export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
   </div>
 </section>
 
-<section class="section surface-sunken">
+<section class="section surface-sunken" id="levers">
   <div class="shell">
     <p class="eyebrow">Retention levers</p>
     <h2>What keeps the player tapping, and where it lives.</h2>
@@ -432,9 +504,14 @@ export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
 
 <section class="section" id="scorecard">
   <div class="shell">
-    <p class="eyebrow">Retention scorecard</p>
-    <h2>${tally(meta.scorecard).yes} of ${PRINCIPLES.length} principles fully met.</h2>
-    <p class="lead muted">${tally(meta.scorecard).partial === 0 ? "No known gaps." : `${tally(meta.scorecard).partial} partial, each one a known gap.`} Every line says where the principle lives in the game.</p>
+    <div class="score-head">
+      <div>
+        <p class="eyebrow">Retention scorecard</p>
+        <h2>${tally(meta.scorecard).yes} of ${PRINCIPLES.length} principles fully met.</h2>
+        <p class="lead muted">${tally(meta.scorecard).partial === 0 ? "No known gaps." : `${tally(meta.scorecard).partial} partial, each one a known gap.`} Every line says where the principle lives in the game.</p>
+      </div>
+      <div class="radar-wrap">${radar(entry)}</div>
+    </div>
     ${scorecardTable(entry)}
   </div>
 </section>
@@ -448,6 +525,11 @@ export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
       <div class="table-wrap"><table class="table"><thead><tr><th>Event</th><th>Meaning</th></tr></thead><tbody>${events}</tbody></table></div>
     </div>
     <div>
+      <div class="live-stats" aria-label="Session numbers">
+        <div><b id="stat-first">-</b><span>to first input</span></div>
+        <div><b id="stat-events">0</b><span>events</span></div>
+        <div><b id="stat-span">-</b><span>in the ad</span></div>
+      </div>
       <div class="console" aria-live="polite">
         <div class="console-head"><span class="mono">EVENT LOG</span><button class="console-clear" type="button">Clear</button></div>
         <ol class="console-body" id="telemetry-log"><li class="console-empty">Waiting for the first tap. Press TAP TO PLAY above.</li></ol>
@@ -480,6 +562,13 @@ export function renderDetail(entry: SiteEntry, info: SiteInfo): string {
     </div>
   </div>
 </section>
+
+<nav class="pager" aria-label="More playables">
+  <div class="shell pager-row">
+    ${pagerLink(previous, "Previous", "prev")}
+    ${pagerLink(next, "Next", "next")}
+  </div>
+</nav>
 </main>
 ${footer(info)}`;
 
