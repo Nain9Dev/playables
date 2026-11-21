@@ -1,0 +1,77 @@
+{
+  "slug": "paint-roll",
+  "title": "Paint Roll",
+  "order": 5,
+  "status": "live",
+  "tagline": "Swipe to roll. Splash every tile before the moves run out.",
+  "genre": "Puzzle, colour fill",
+  "duration": "25 to 40 seconds",
+  "orientation": "Portrait",
+  "hook": "A glossy paint ball breathes on a sculpted 3D labyrinth while stars spin and sparkles drift from frame zero. After 0.7 seconds without a swipe, the ball rolls down the first corridor by itself, flipping tiles into vibrant colour with paint splashes, then hands control back at once.",
+  "coreLoop": "Swipe in any of four directions to roll the ball until it hits a wall, painting every tile it crosses and collecting bonus stars along the way. Every swipe spends one move. Paint 100% of the maze before the move counter hits zero. Levels are carved from a seed so a winning path always exists.",
+  "levers": [
+    {
+      "name": "Motion before the first touch",
+      "why": "A static puzzle looks like a screenshot in the first second.",
+      "how": "Ambient sparkles drift, stars spin, the ball breathes, and at 0.7 seconds an automatic free demo swipe rolls paint across the opening corridor."
+    },
+    {
+      "name": "ASMR colour-fill juice",
+      "why": "Each tile popping in sequence with rising notes turns a single swipe into a cascade of micro-rewards.",
+      "how": "Tiles spring upward as the ball crosses them, splashes burst from every painted tile, the ball squashes on wall impact, and each newly painted tile plays the next note of an ascending pentatonic scale."
+    },
+    {
+      "name": "Bonus stars and big-swipe callouts",
+      "why": "Spikes of bigger payoff break up uniform moves and give extra routing targets.",
+      "how": "Three seeded golden stars sit on the maze and pay +50 with a chime and ring burst. Swipes painting four or more fresh tiles trigger a SPLASH callout and camera punch."
+    },
+    {
+      "name": "Halfway pattern interrupt",
+      "why": "A scheduled celebration halfway through keeps momentum high.",
+      "how": "Crossing 50% painted fires HALFWAY! with a golden shockwave, chord, camera punch and escalating music layer."
+    },
+    {
+      "name": "Near-win tension",
+      "why": "Seeing the last one to three unpainted tiles pulse makes finishing irresistible.",
+      "how": "When three or fewer unpainted tiles remain they pulse bright gold on the board and a callout counts them down. The move chip throbs red at three moves left."
+    },
+    {
+      "name": "Second chance with a gift",
+      "why": "A frictionless retry with extra moves keeps players engaged after a close loss.",
+      "how": "The first failure offers TRY AGAIN with 3 extra moves. The second failure leaves only the pulsing install button."
+    }
+  ],
+  "events": [
+    { "name": "impression", "meaning": "The ad is ready and visible, and the level loads." },
+    { "name": "demo_move", "meaning": "Automatic free opening swipe after 0.7 seconds without input." },
+    { "name": "first_swipe", "meaning": "Milliseconds from impression to the first player swipe." },
+    { "name": "swipe", "meaning": "A valid swipe completed. Carries direction, painted count, stars hit, remaining tiles and moves left." },
+    { "name": "blocked", "meaning": "A swipe directly into an adjacent wall." },
+    { "name": "milestone", "meaning": "Reached 50% of the maze painted." },
+    { "name": "near_win", "meaning": "Three or fewer unpainted tiles or moves left." },
+    { "name": "idle_nudge", "meaning": "No swipe for 2.8 seconds and the finger hint sped up." },
+    { "name": "fail", "meaning": "Moves ran out with tiles still unpainted." },
+    { "name": "retry", "meaning": "The player used the second chance with 3 extra moves." },
+    { "name": "replay", "meaning": "The player started a fresh run after the second chance was spent." },
+    { "name": "win", "meaning": "Every floor tile was painted. Carries moves left and score." },
+    { "name": "end_card", "meaning": "The end card is shown. Carries outcome, stars, percent painted, score and moves left." },
+    { "name": "cta_click", "meaning": "The install button was pressed. Carries origin." }
+  ],
+  "scorecard": {
+    "instant-motion": { "status": "yes", "note": "Sparkles drift, stars spin and the ball breathes from frame zero, followed by a free demo swipe at 0.7 seconds." },
+    "text-hook": { "status": "yes", "note": "The caption Can you paint it all? sits above the maze and slides away after the first swipe." },
+    "one-control": { "status": "yes", "note": "Single swipe in any of four directions (or arrow/WASD keys), demonstrated by the animated finger and opening demo swipe." },
+    "first-reward": { "status": "yes", "note": "The opening swipe paints a corridor of tiles with rising notes, spring pops, splash bursts and wall squash." },
+    "pattern-interrupt": { "status": "yes", "note": "Crossing 50% painted triggers a scheduled HALFWAY! shockwave, chord, camera punch and music layer jump." },
+    "variable-reward": { "status": "yes", "note": "Three seeded bonus stars pay +50 with a chime and burst, streaks multiply points up to x4, and long swipes trigger SPLASH callouts." },
+    "open-loop": { "status": "yes", "note": "A gradient progress bar, PAINTED % counter, MOVES chip and visible unpainted tiles keep the finish line in sight." },
+    "near-miss": { "status": "yes", "note": "The last one to three unpainted tiles pulse bright gold on the board with a callout, and a loss above 80% still earns two stars." },
+    "instant-retry": { "status": "yes", "note": "One tap on TRY AGAIN restarts with 3 extra moves." },
+    "sound-haptics": { "status": "yes", "note": "Ascending paint notes, wall thud, star chime, halfway chord, layered looping music with mute toggle and vibrations; audio stays off until the first swipe. Not auditioned on a real phone speaker." },
+    "cliffhanger-end": { "status": "yes", "note": "Animated stars, painted percentage, Level 2 neon maze teaser and a pulsing PLAY LEVEL 2 button that opens the store link." },
+    "measured": { "status": "yes", "note": "Emits impression, demo_move, first_swipe, swipe, blocked, milestone, near_win, win, fail, retry, end_card and cta_click. No real-player data collected yet." }
+  },
+  "stack": ["TypeScript", "Three.js", "InstancedMesh", "Vite", "Vitest", "MRAID 2.0", "Web Audio"],
+  "source": "https://github.com/Nain9Dev/playables/tree/main/games/paint-roll",
+  "accent": "#ff2f85"
+}
